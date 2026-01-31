@@ -11,7 +11,7 @@ export default function HomePage() {
   });
 
   useEffect(() => {
-    const targetDate = new Date('2026-12-31T23:59:59').getTime();
+    const targetDate = new Date('2026-06-20T23:59:59').getTime();
 
     const interval = setInterval(() => {
       const now = new Date().getTime();
@@ -50,7 +50,7 @@ export default function HomePage() {
               <div className="h-px bg-gradient-to-r from-zinc-700 via-zinc-500 to-transparent" />
               
               <p className="text-xl md:text-2xl text-zinc-400 font-light max-w-2xl leading-relaxed">
-                Festival de música electrónica underground. Una experiencia inmersiva donde el techno se fusiona con la cultura digital.
+                Segunda edición de la única e inigualble TRIPLE NELSON. Otro año mas donde podremos disfrutar de un día lleno de emoción, divertidos eventos, premios y la mejor música del panorama del techno nacional!
               </p>
             </div>
 
@@ -69,7 +69,7 @@ export default function HomePage() {
                 <span className="text-sm text-zinc-500 uppercase tracking-wider">En Vivo</span>
               </div>
               <div className="h-4 w-px bg-zinc-800" />
-              <span className="text-sm text-zinc-500">31 Diciembre 2026</span>
+              <span className="text-sm text-zinc-500">20 Junio 2026</span>
             </div>
           </div>
 
