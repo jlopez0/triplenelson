@@ -1,0 +1,14 @@
+{
+  "eventName": "THE TRIPLE NELSON PARTY",
+  "date": "2026-06-20T20:00:00",
+  "location": "Secret Warehouse, Ciudad",
+  "locationUrl": "https://maps.google.com",
+  "description": "La fiesta que esperabas. No preguntes, solo ven.",
+  "dressCode": "Smart Casual / Toque Neón",
+  "organizerEmail": "hola@triplenelson.com",
+  "bizum": {
+    "phone": "666 000 000",
+    "codePrefix": "TN-",
+    "suggestedAmounts": [15, 30, 50]
+  }
+}
