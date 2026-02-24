@@ -13,24 +13,37 @@ export function Countdown({ targetDate }: CountdownProps) {
 
   useEffect(() => {
     const target = new Date(targetDate);
-
-    const timer = setInterval(() => {
+    const updateCountdown = () => {
       const now = new Date();
+
       if (now >= target) {
         setIsHere(true);
-        clearInterval(timer);
-        return;
+        setTimeLeft(null);
+        return true;
       }
 
+      setIsHere(false);
       setTimeLeft({
         d: differenceInDays(target, now),
         h: differenceInHours(target, now) % 24,
         m: differenceInMinutes(target, now) % 60,
         s: differenceInSeconds(target, now) % 60,
       });
+
+      return false;
+    };
+
+    if (updateCountdown()) {
+      return;
+    }
+
+    const timer = window.setInterval(() => {
+      if (updateCountdown()) {
+        window.clearInterval(timer);
+      }
     }, 1000);
 
-    return () => clearInterval(timer);
+    return () => window.clearInterval(timer);
   }, [targetDate]);
 
   if (!timeLeft && !isHere) {
