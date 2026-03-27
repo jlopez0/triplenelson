@@ -66,7 +66,7 @@ export default function HomePage() {
                 <span className="text-xs md:text-sm text-zinc-500 uppercase tracking-wider">En Vivo</span>
               </div>
               <div className="h-4 w-px bg-zinc-800" />
-              <span className="text-xs md:text-sm text-zinc-500">20 Junio 2026</span>
+              <span className="text-xl md:text-3xl font-display font-bold tracking-tight text-zinc-200">20 Junio 2026</span>
             </div>
 
 

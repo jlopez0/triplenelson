@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import type { BizumDb, PaymentIntent, Receiver } from "./types";
 import { getDb } from "./firebase";
 
-const COLLECTION = "bizum";
+const COLLECTION = process.env.BIZUM_ENV === "dev" ? "bizum_dev" : "bizum";
 const DOC_ID = "state";
 
 const DEFAULT_EVENT_ID = process.env.BIZUM_EVENT_ID ?? "triple-nelson-2026";

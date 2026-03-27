@@ -17,6 +17,7 @@ import type {
 const DEFAULT_EVENT_ID = process.env.BIZUM_EVENT_ID ?? "triple-nelson-2026";
 const INTENT_TTL_MINUTES = Number(process.env.BIZUM_INTENT_TTL_MINUTES ?? "30");
 const MAX_TICKETS_PER_PURCHASE = 10;
+const FIELES_PRICE_CENTS = Math.round(Number(process.env.BIZUM_FIELES_PRICE_EUR ?? "50") * 100);
 
 const ACTIVE_INTENT_STATUSES: PaymentIntentStatus[] = ["CREATED", "USER_CONFIRMED"];
 
@@ -66,6 +67,7 @@ function toPublicIntent(intent: PaymentIntent): PublicIntentView {
     paidAt: intent.paidAt,
     ticketCodes: intent.ticketCodes,
     buyerName: intent.buyerName,
+    ticketType: intent.ticketType,
   };
 }
 
@@ -179,13 +181,9 @@ function pickReceiver(params: {
     loadByReceiver.set(receiver.id, 0);
   }
 
-  const now = params.nowDate.getTime();
+  const COUNTED_STATUSES = [...ACTIVE_INTENT_STATUSES, "PAID"] as string[];
   for (const intent of params.db.payment_intents) {
-    if (!ACTIVE_INTENT_STATUSES.includes(intent.status)) {
-      continue;
-    }
-
-    if (new Date(intent.expiresAt).getTime() <= now) {
+    if (!COUNTED_STATUSES.includes(intent.status)) {
       continue;
     }
 
@@ -435,6 +433,7 @@ export async function createOrReuseIntent(params: {
   eventId?: string;
   userKey: string;
   buyerName?: string;
+  ticketType?: string;
   quantity?: number;
   knowsBilly?: boolean;
   ip: string;
@@ -458,11 +457,14 @@ export async function createOrReuseIntent(params: {
   }
   const eventId = params.eventId?.trim() || DEFAULT_EVENT_ID;
   const quantity = sanitizeQuantity(params.quantity);
+  const ticketType = params.ticketType?.trim() || undefined;
+  const isFieles = ticketType === "ENTRADA FIELES";
 
   return withDbTransaction((db) => {
     const nowDate = new Date();
     expireStaleIntentsInDb(db, nowDate);
     const event = getEventOrThrow(db, eventId);
+    const pricePerUnit = isFieles ? FIELES_PRICE_CENTS : event.fixedPriceCents;
 
     const existing = db.payment_intents.find((intent) => {
       if (intent.eventId !== event.id || intent.userKey !== userKey || intent.quantity !== quantity) {
@@ -485,10 +487,12 @@ export async function createOrReuseIntent(params: {
           eventId: event.id,
         }),
       );
+      const existingReceiver = db.receivers.find((r) => r.id === existing.receiverId);
       return {
         reused: true,
         event,
         intent: toPublicIntent(existing),
+        receiverLabel: existingReceiver?.label ?? "",
       };
     }
 
@@ -501,11 +505,12 @@ export async function createOrReuseIntent(params: {
       eventId: event.id,
       userKey,
       buyerName: params.buyerName?.trim() || undefined,
+      ticketType,
       paymentRef: generatePaymentRef(existingRefs),
       quantity,
       receiverId: receiver.id,
       receiverPhone: receiver.phone,
-      amountCents: event.fixedPriceCents * quantity,
+      amountCents: pricePerUnit * quantity,
       currency: event.currency,
       status: "CREATED",
       createdAt,
@@ -533,6 +538,7 @@ export async function createOrReuseIntent(params: {
       reused: false,
       event,
       intent: toPublicIntent(intent),
+      receiverLabel: receiver.label ?? "",
     };
   });
 }
@@ -823,6 +829,148 @@ export async function rejectIntent(params: { intentId: string; reason?: string; 
     }
 
     return toPublicIntent(intent);
+  });
+}
+
+export async function createManualIntent(params: {
+  userKey: string;
+  buyerName?: string;
+  quantity: number;
+  amountCents: number;
+  ticketType: string;
+  adminKey: string;
+  ip: string;
+}) {
+  const userKey = normalizeUserKey(params.userKey);
+  if (!isValidEmail(userKey)) {
+    throw new BizumServiceError({ code: "INVALID_USER_KEY", statusCode: 400, message: "Email inválido." });
+  }
+  const quantity = Math.max(1, Math.min(MAX_TICKETS_PER_PURCHASE, Math.round(params.quantity)));
+  if (params.amountCents < 0) {
+    throw new BizumServiceError({ code: "INVALID_AMOUNT", statusCode: 400, message: "El importe no puede ser negativo." });
+  }
+
+  const marked = await withDbTransaction((db) => {
+    const event = getEventOrThrow(db, DEFAULT_EVENT_ID);
+    const now = nowIso();
+    const existingRefs = new Set(db.payment_intents.map((i) => i.paymentRef));
+    const intent: PaymentIntent = {
+      id: `pi_${randomUUID().replace(/-/g, "").slice(0, 24)}`,
+      eventId: event.id,
+      userKey,
+      buyerName: params.buyerName?.trim() || undefined,
+      ticketType: params.ticketType.trim() || "ENTRADA",
+      paymentRef: generatePaymentRef(existingRefs),
+      quantity,
+      receiverId: "manual",
+      receiverPhone: "",
+      amountCents: params.amountCents,
+      currency: event.currency,
+      status: "PAID",
+      createdAt: now,
+      updatedAt: now,
+      expiresAt: now,
+      paidAt: now,
+      validationToken: randomUUID(),
+      version: 1,
+    };
+
+    const tickets = Array.from({ length: quantity }, (_, index) => generateTicket(intent, index));
+    intent.ticketCodes = tickets.map((t) => t.ticketCode);
+    intent.qrPayloads = tickets.map((t) => t.qrPayload);
+
+    db.payment_intents.push(intent);
+    db.audit_logs.push(
+      buildAuditLog({
+        action: "ADMIN_MANUAL_CREATED",
+        actorType: "ADMIN",
+        actorKey: params.adminKey,
+        ip: params.ip,
+        intentId: intent.id,
+        eventId: event.id,
+        metadata: { ticketType: intent.ticketType, amountCents: intent.amountCents, quantity },
+      }),
+    );
+
+    return {
+      intent: toPublicIntent(intent),
+      qrPayloads: intent.qrPayloads,
+      eventName: event.name,
+      userEmail: intent.userKey,
+      eventId: event.id,
+    };
+  });
+
+  let emailDelivery = { attempted: 0, sent: 0, skipped: true, reason: "No tickets." };
+  if ((marked.intent.ticketCodes?.length ?? 0) > 0) {
+    try {
+      emailDelivery = await sendTicketsByEmail({
+        to: marked.userEmail,
+        eventName: marked.eventName,
+        paymentRef: marked.intent.paymentRef,
+        amountCents: marked.intent.amountCents,
+        currency: marked.intent.currency,
+        ticketCodes: marked.intent.ticketCodes ?? [],
+        qrPayloads: marked.qrPayloads,
+      });
+    } catch (error) {
+      emailDelivery = {
+        attempted: marked.intent.ticketCodes?.length ?? 0,
+        sent: 0,
+        skipped: false,
+        reason: error instanceof Error ? error.message : "Email error.",
+      };
+    }
+  }
+
+  if (emailDelivery.sent > 0) {
+    await withDbTransaction((db) => {
+      const intent = db.payment_intents.find((i) => i.id === marked.intent.id);
+      if (!intent) return;
+      intent.ticketsEmailedAt = nowIso();
+      intent.updatedAt = nowIso();
+      intent.version += 1;
+    });
+  }
+
+  return { ...marked, emailDelivery };
+}
+
+export async function deleteIntent(params: { intentId: string; adminKey: string; ip: string }) {
+  if (!params.intentId?.trim()) {
+    throw new BizumServiceError({
+      code: "INVALID_INTENT_ID",
+      statusCode: 400,
+      message: "intentId is required.",
+    });
+  }
+
+  return withDbTransaction((db) => {
+    const index = db.payment_intents.findIndex((item) => item.id === params.intentId.trim());
+    if (index === -1) {
+      throw new BizumServiceError({
+        code: "INTENT_NOT_FOUND",
+        statusCode: 404,
+        message: "Intent not found.",
+      });
+    }
+
+    const intent = db.payment_intents[index];
+    db.payment_intents.splice(index, 1);
+
+    db.audit_logs.push(
+      buildAuditLog({
+        action: "ADMIN_DELETED",
+        actorType: "ADMIN",
+        actorKey: params.adminKey,
+        ip: params.ip,
+        intentId: intent.id,
+        eventId: intent.eventId,
+        metadata: { deletedStatus: intent.status },
+      }),
+    );
+
+    return { id: intent.id };
   });
 }
 

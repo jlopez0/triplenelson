@@ -47,6 +47,7 @@ export interface PaymentIntent {
   qrPayloads?: string[];
   ticketsEmailedAt?: string;
   buyerName?: string;
+  ticketType?: string;
   knowsBilly?: boolean;
   validationToken?: string;
   version: number;
@@ -85,4 +86,5 @@ export interface PublicIntentView {
   paidAt?: string;
   ticketCodes?: string[];
   buyerName?: string;
+  ticketType?: string;
 }

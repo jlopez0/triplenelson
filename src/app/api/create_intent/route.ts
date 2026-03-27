@@ -6,11 +6,12 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { eventId?: string; userKey?: string; buyerName?: string; quantity?: number; knowsBilly?: boolean };
+    const body = (await request.json()) as { eventId?: string; userKey?: string; buyerName?: string; ticketType?: string; quantity?: number; knowsBilly?: boolean };
     const result = await createOrReuseIntent({
       eventId: body.eventId,
       userKey: body.userKey ?? "",
       buyerName: body.buyerName,
+      ticketType: body.ticketType,
       quantity: body.quantity,
       knowsBilly: body.knowsBilly,
       ip: getClientIp(request),
@@ -22,6 +23,8 @@ export async function POST(request: NextRequest) {
       paymentRef: result.intent.paymentRef,
       quantity: result.intent.quantity,
       phone: result.intent.receiverPhone,
+      receiverLabel: result.receiverLabel ?? "",
+      ticketType: result.intent.ticketType ?? null,
       amount: Number((result.intent.amountCents / 100).toFixed(2)),
       amountCents: result.intent.amountCents,
       currency: result.intent.currency,

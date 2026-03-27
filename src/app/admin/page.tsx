@@ -26,6 +26,7 @@ type AdminIntent = {
   paidAt?: string;
   userKey: string;
   buyerName?: string;
+  ticketType?: string;
   expiresAt: string;
   knowsBilly?: boolean;
 };
@@ -81,10 +82,16 @@ function StatusBadge({ status }: { status: AdminIntent["status"] }) {
 }
 
 function BuyerCell({ item }: { item: AdminIntent }) {
+  const isFieles = item.ticketType === "ENTRADA FIELES";
   return (
     <td className="py-3 pr-3">
       {item.buyerName ? <div className="font-medium text-white">{item.buyerName}</div> : null}
       <div className="text-xs text-zinc-500">{item.userKey}</div>
+      {item.ticketType ? (
+        <div className={`text-[10px] mt-0.5 font-semibold ${isFieles ? "text-yellow-400" : "text-purple-400"}`}>
+          {isFieles ? "★ " : ""}{item.ticketType}
+        </div>
+      ) : null}
     </td>
   );
 }
@@ -108,6 +115,15 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  const [showManualModal, setShowManualModal] = useState(false);
+  const [manualEmail, setManualEmail] = useState("");
+  const [manualName, setManualName] = useState("");
+  const [manualQuantity, setManualQuantity] = useState(1);
+  const [manualAmount, setManualAmount] = useState("");
+  const [manualType, setManualType] = useState("ENTRADA FIELES");
+  const [manualCustomType, setManualCustomType] = useState("");
+  const [savingManual, setSavingManual] = useState(false);
 
   function buildAuthHeader(u: string, p: string): HeadersInit {
     return { authorization: `Basic ${window.btoa(`${u}:${p}`)}` };
@@ -261,6 +277,60 @@ export default function AdminPage() {
     }
   }
 
+  async function deleteIntentById(intentId: string, isPaid: boolean) {
+    setError(""); setMessage("");
+    if (!window.confirm(isPaid
+      ? "⚠️ Este pago ya está PAGADO y se han enviado entradas. ¿Seguro que quieres borrarlo? Esta acción no se puede deshacer."
+      : "¿Borrar este intent? Esta acción no se puede deshacer."
+    )) return;
+    if (isPaid && !window.confirm("Confirma de nuevo: vas a borrar un pago ya procesado.")) return;
+    try {
+      const res = await fetch(`/api/admin/intents/${intentId}`, {
+        method: "DELETE",
+        headers: { ...currentAuthHeader() },
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.message ?? "No se pudo borrar.");
+      setMessage("Intent borrado.");
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo borrar.");
+    }
+  }
+
+  async function createManualPayment() {
+    setError(""); setMessage("");
+    setSavingManual(true);
+    try {
+      const amountCents = Math.round(parseFloat(manualAmount.replace(",", ".")) * 100);
+      if (isNaN(amountCents) || amountCents < 0) throw new Error("Importe inválido.");
+      const ticketType = manualType === "__custom__" ? manualCustomType.trim() : manualType;
+      if (!ticketType) throw new Error("Indica el tipo de entrada.");
+      const res = await fetch("/api/admin/intents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...currentAuthHeader() },
+        body: JSON.stringify({
+          userKey: manualEmail.trim().toLowerCase(),
+          buyerName: manualName.trim() || undefined,
+          quantity: manualQuantity,
+          amountCents,
+          ticketType,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.message ?? "Error al crear pago.");
+      const sent = payload?.emailDelivery?.sent ?? 0;
+      setMessage(`✓ Pago manual creado. ${sent > 0 ? `Email enviado (${sent} entrada${sent !== 1 ? "s" : ""}).` : "Email pendiente."}`);
+      setShowManualModal(false);
+      setManualEmail(""); setManualName(""); setManualQuantity(1); setManualAmount(""); setManualType("ENTRADA FIELES"); setManualCustomType("");
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al crear pago.");
+    } finally {
+      setSavingManual(false);
+    }
+  }
+
   async function sendTestEmail() {
     setError(""); setMessage("");
     setSendingTestEmail(true);
@@ -281,7 +351,7 @@ export default function AdminPage() {
   }
 
   // Derived state
-  const pending = useMemo(() => allIntents.filter((i) => i.status === "USER_CONFIRMED"), [allIntents]);
+  const pending = useMemo(() => allIntents.filter((i) => i.status === "USER_CONFIRMED" || i.status === "CREATED"), [allIntents]);
   const paid = useMemo(() => allIntents.filter((i) => i.status === "PAID"), [allIntents]);
   const created = useMemo(() => allIntents.filter((i) => i.status === "CREATED"), [allIntents]);
   const rejected = useMemo(() => allIntents.filter((i) => i.status === "REJECTED"), [allIntents]);
@@ -290,6 +360,7 @@ export default function AdminPage() {
   const totalTicketsSold = useMemo(() => paid.reduce((s, i) => s + i.quantity, 0), [paid]);
   const totalRevenue = useMemo(() => paid.reduce((s, i) => s + i.amountCents, 0), [paid]);
   const pendingRevenue = useMemo(() => pending.reduce((s, i) => s + i.amountCents, 0), [pending]);
+  const fielesTickets = useMemo(() => paid.filter((i) => i.ticketType === "ENTRADA FIELES").reduce((s, i) => s + i.quantity, 0), [paid]);
 
   const byReceiver = useMemo(
     () =>
@@ -354,15 +425,18 @@ export default function AdminPage() {
     <div className="min-h-screen bg-techno">
       <header className="border-b border-zinc-800 bg-black/60 backdrop-blur-sm sticky top-0 z-50">
         <div className="container-pro py-4 flex items-center justify-between">
-          <div>
-            <h1 className="font-display text-xl md:text-2xl">Panel Admin · Triple Nelson</h1>
-            {loading && <span className="text-xs text-zinc-500">Cargando...</span>}
-          </div>
-          <div className="flex items-center gap-3">
-            <button type="button" onClick={loadData} disabled={loading} className="btn-secondary text-xs py-2 disabled:opacity-40">
-              ↺ Refrescar
+          <h1 className="font-display text-lg md:text-2xl leading-tight">
+            Panel Admin
+            {loading && <span className="ml-2 text-xs text-zinc-500 font-sans">Cargando...</span>}
+          </h1>
+          <div className="flex items-center gap-2">
+            <button type="button" onClick={() => setShowManualModal(true)} className="btn-primary text-[11px] md:text-xs px-3 py-2">
+              + Pago
             </button>
-            <button type="button" onClick={handleLogout} className="text-xs text-zinc-500 hover:text-white transition-colors uppercase tracking-wider">
+            <button type="button" onClick={loadData} disabled={loading} className="btn-secondary text-[11px] md:text-xs px-3 py-2 disabled:opacity-40">
+              ↺
+            </button>
+            <button type="button" onClick={handleLogout} className="text-[11px] md:text-xs text-zinc-500 hover:text-white transition-colors uppercase tracking-wider px-1">
               Salir
             </button>
           </div>
@@ -374,26 +448,31 @@ export default function AdminPage() {
         {message ? <p className="text-sm text-emerald-300 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">{message}</p> : null}
 
         {/* KPIs */}
-        <section className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-4">
-            <div className="text-[10px] uppercase tracking-widest text-emerald-400 mb-1">Entradas vendidas</div>
-            <div className="font-display text-4xl text-emerald-300">{totalTicketsSold}</div>
-            <div className="text-xs text-zinc-500 mt-1">{paid.length} pedido{paid.length !== 1 ? "s" : ""}</div>
+        <section className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 md:gap-3">
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 p-3 md:p-4">
+            <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-emerald-400 mb-1">Vendidas</div>
+            <div className="font-display text-3xl md:text-4xl text-emerald-300">{totalTicketsSold}</div>
+            <div className="text-[10px] md:text-xs text-zinc-500 mt-1">{paid.length} pedido{paid.length !== 1 ? "s" : ""}</div>
           </div>
-          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-4">
-            <div className="text-[10px] uppercase tracking-widest text-emerald-500 mb-1">Ingresos confirmados</div>
-            <div className="font-display text-2xl text-emerald-400">{formatMoney(totalRevenue, "EUR")}</div>
-            <div className="text-xs text-zinc-500 mt-1">Bizums recibidos</div>
+          <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3 md:p-4">
+            <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-emerald-500 mb-1">Ingresos</div>
+            <div className="font-display text-xl md:text-2xl text-emerald-400 leading-tight">{formatMoney(totalRevenue, "EUR")}</div>
+            <div className="text-[10px] md:text-xs text-zinc-500 mt-1">confirmados</div>
           </div>
-          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-4">
-            <div className="text-[10px] uppercase tracking-widest text-sky-400 mb-1">Por verificar</div>
-            <div className="font-display text-4xl text-sky-300">{pending.length}</div>
-            <div className="text-xs text-zinc-500 mt-1">{pending.reduce((s, i) => s + i.quantity, 0)} ent. · {formatMoney(pendingRevenue, "EUR")}</div>
+          <div className="rounded-2xl border border-sky-500/30 bg-sky-500/10 p-3 md:p-4">
+            <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-sky-400 mb-1">Por verificar</div>
+            <div className="font-display text-3xl md:text-4xl text-sky-300">{pending.length}</div>
+            <div className="text-[10px] md:text-xs text-zinc-500 mt-1">{pending.reduce((s, i) => s + i.quantity, 0)} ent.</div>
           </div>
-          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
-            <div className="text-[10px] uppercase tracking-widest text-amber-400 mb-1">En espera pago</div>
-            <div className="font-display text-4xl text-amber-300">{created.length}</div>
-            <div className="text-xs text-zinc-500 mt-1">{rejected.length} rechazados · {expired.length} expirados</div>
+          <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-3 md:p-4">
+            <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-amber-400 mb-1">En espera</div>
+            <div className="font-display text-3xl md:text-4xl text-amber-300">{created.length}</div>
+            <div className="text-[10px] md:text-xs text-zinc-500 mt-1">{rejected.length} rech. · {expired.length} exp.</div>
+          </div>
+          <div className="col-span-2 sm:col-span-1 rounded-2xl border border-yellow-500/30 bg-yellow-500/10 p-3 md:p-4">
+            <div className="text-[9px] md:text-[10px] uppercase tracking-widest text-yellow-400 mb-1">★ Fieles</div>
+            <div className="font-display text-3xl md:text-4xl text-yellow-300">{fielesTickets}</div>
+            <div className="text-[10px] md:text-xs text-zinc-500 mt-1">entradas fieles</div>
           </div>
         </section>
 
@@ -438,7 +517,7 @@ export default function AdminPage() {
             className={`px-4 py-2 text-sm transition-colors ${activeTab === "pending" ? "text-white border-b-2 border-white -mb-px" : "text-zinc-500 hover:text-zinc-300"}`}
           >
             Por verificar{" "}
-            <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${pending.length > 0 ? "bg-sky-500/20 text-sky-300" : "bg-zinc-800 text-zinc-500"}`}>{pending.length}</span>
+            <span className={`ml-1 rounded-full px-1.5 py-0.5 text-[10px] ${pending.length > 0 ? "bg-amber-500/20 text-amber-300" : "bg-zinc-800 text-zinc-500"}`}>{pending.length}</span>
           </button>
           <button
             type="button"
@@ -474,7 +553,10 @@ export default function AdminPage() {
                   <tbody>
                     {pending.map((item) => (
                       <tr key={item.id} className="border-b border-zinc-900 hover:bg-zinc-900/30">
-                        <td className="py-3 pr-3 font-mono text-sky-300 font-bold">{item.paymentRef}</td>
+                        <td className="py-3 pr-3 font-mono text-sky-300 font-bold">
+                          {item.paymentRef}
+                          {item.status === "CREATED" && <div className="text-[10px] text-amber-400 mt-0.5">Sin confirmar</div>}
+                        </td>
                         <BuyerCell item={item} />
                         <td className="py-3 pr-3 font-bold">{item.quantity}</td>
                         <td className="py-3 pr-3 text-emerald-300">{formatMoney(item.amountCents, item.currency)}</td>
@@ -483,7 +565,7 @@ export default function AdminPage() {
                           <div className="text-xs text-zinc-500">{item.receiverPhone}</div>
                         </td>
                         <td className="py-3 pr-3 text-xs">{item.knowsBilly === undefined ? "—" : item.knowsBilly ? "Sí" : "No"}</td>
-                        <td className="py-3 pr-3 text-xs text-zinc-400">{formatDate(item.confirmedAt)}</td>
+                        <td className="py-3 pr-3 text-xs text-zinc-400">{item.status === "CREATED" ? "—" : formatDate(item.confirmedAt)}</td>
                         <td className="py-3 pr-3 text-xs text-zinc-500">{formatDate(item.expiresAt)}</td>
                         <td className="py-3 pr-3">
                           <div className="flex gap-2">
@@ -492,6 +574,9 @@ export default function AdminPage() {
                             </button>
                             <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">
                               ✗ Rechazar
+                            </button>
+                            <button type="button" onClick={() => deleteIntentById(item.id, false)} disabled={loading} className="rounded-lg border border-zinc-600/40 bg-zinc-700/20 px-3 py-1 text-xs text-zinc-400 hover:bg-zinc-700/40 disabled:opacity-40">
+                              🗑
                             </button>
                           </div>
                         </td>
@@ -544,12 +629,15 @@ export default function AdminPage() {
                         <td className="py-3 pr-3 text-xs text-zinc-400">{formatDate(item.confirmedAt)}</td>
                         <td className="py-3 pr-3 text-xs text-zinc-400">{formatDate(item.paidAt)}</td>
                         <td className="py-3 pr-3">
-                          {item.status === "USER_CONFIRMED" ? (
-                            <div className="flex gap-2">
-                              <button type="button" onClick={() => markPaid(item.id)} disabled={loading} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40">✓</button>
-                              <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">✗</button>
-                            </div>
-                          ) : "—"}
+                          <div className="flex gap-2">
+                            {(item.status === "USER_CONFIRMED" || item.status === "CREATED") && (
+                              <>
+                                <button type="button" onClick={() => markPaid(item.id)} disabled={loading} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40">✓</button>
+                                <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">✗</button>
+                              </>
+                            )}
+                            <button type="button" onClick={() => deleteIntentById(item.id, item.status === "PAID")} disabled={loading} className="rounded-lg border border-zinc-600/40 bg-zinc-700/20 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700/40 disabled:opacity-40">🗑</button>
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -572,6 +660,110 @@ export default function AdminPage() {
         </section>
 
       </main>
+
+      {/* Modal: pago manual */}
+      {showManualModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="font-display text-xl">Pago manual</h2>
+              <button type="button" onClick={() => setShowManualModal(false)} className="text-zinc-500 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Email comprador *</label>
+                <input
+                  type="email"
+                  value={manualEmail}
+                  onChange={(e) => setManualEmail(e.target.value)}
+                  placeholder="correo@ejemplo.com"
+                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Nombre comprador</label>
+                <input
+                  type="text"
+                  value={manualName}
+                  onChange={(e) => setManualName(e.target.value)}
+                  placeholder="Nombre y apellido"
+                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Entradas *</label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={manualQuantity}
+                    onChange={(e) => setManualQuantity(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Importe (€) *</label>
+                  <input
+                    type="text"
+                    inputMode="decimal"
+                    value={manualAmount}
+                    onChange={(e) => setManualAmount(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Tipo de entrada *</label>
+                <select
+                  value={manualType}
+                  onChange={(e) => setManualType(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                >
+                  <option value="ENTRADA FIELES">ENTRADA FIELES</option>
+                  <option value="ENTRADA NORMAL">ENTRADA NORMAL</option>
+                  <option value="INVITACIÓN">INVITACIÓN</option>
+                  <option value="__custom__">Otro (personalizado)</option>
+                </select>
+              </div>
+
+              {manualType === "__custom__" && (
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Tipo personalizado</label>
+                  <input
+                    type="text"
+                    value={manualCustomType}
+                    onChange={(e) => setManualCustomType(e.target.value)}
+                    placeholder="Ej: PRESS, STAFF..."
+                    className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                  />
+                </div>
+              )}
+            </div>
+
+            <p className="text-xs text-zinc-500">Se generarán las entradas y se enviará el email al comprador automáticamente.</p>
+
+            <div className="flex gap-3 pt-1">
+              <button
+                type="button"
+                onClick={createManualPayment}
+                disabled={savingManual || !manualEmail.trim() || !manualAmount.trim()}
+                className="btn-primary flex-1 text-sm py-3 disabled:opacity-50"
+              >
+                {savingManual ? "Creando..." : "Crear y enviar entradas"}
+              </button>
+              <button type="button" onClick={() => setShowManualModal(false)} className="btn-secondary text-sm py-3 px-5">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

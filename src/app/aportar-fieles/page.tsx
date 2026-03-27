@@ -5,13 +5,6 @@ import { useEffect, useMemo, useState } from "react";
 
 type IntentStatus = "CREATED" | "USER_CONFIRMED" | "PAID" | "REJECTED" | "EXPIRED";
 
-type EventInfo = {
-  id: string;
-  name: string;
-  fixedPriceCents: number;
-  currency: "EUR";
-};
-
 type PublicIntent = {
   id: string;
   eventId: string;
@@ -40,9 +33,9 @@ type CreateIntentResponse = {
   status: IntentStatus;
   eventId: string;
   eventName: string;
-  contactEmail?: string;
 };
 
+const TICKET_TYPE = "ENTRADA FIELES";
 const FINAL_STATUSES: IntentStatus[] = ["PAID", "REJECTED", "EXPIRED"];
 
 function formatMoney(amountCents: number, currency: string): string {
@@ -78,14 +71,10 @@ async function safeCopy(value: string): Promise<boolean> {
   }
 }
 
-export default function AportarPage() {
-  const [eventInfo, setEventInfo] = useState<EventInfo | null>(null);
-  const [eventError, setEventError] = useState<string>("");
-
+export default function AportarFielesPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [quantity, setQuantity] = useState(1);
-  const [knowsBilly, setKnowsBilly] = useState<boolean | null>(null);
   const [intentData, setIntentData] = useState<CreateIntentResponse | null>(null);
   const [intent, setIntent] = useState<PublicIntent | null>(null);
 
@@ -99,45 +88,11 @@ export default function AportarPage() {
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
 
   useEffect(() => {
-    let cancelled = false;
-
-    async function loadEvent() {
-      try {
-        const response = await fetch("/api/events/default", { cache: "no-store" });
-        const payload = await response.json();
-
-        if (!response.ok) {
-          throw new Error(payload?.message ?? "No se pudo cargar el evento.");
-        }
-
-        if (!cancelled) {
-          setEventInfo(payload.event as EventInfo);
-        }
-      } catch (err) {
-        if (!cancelled) {
-          setEventError(err instanceof Error ? err.message : "No se pudo cargar el evento.");
-        }
-      }
-    }
-
-    loadEvent();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!intentData || !email.trim()) {
-      return;
-    }
-
+    if (!intentData || !email.trim()) return;
     const shouldPoll = !status || !FINAL_STATUSES.includes(status);
-    if (!shouldPoll) {
-      return;
-    }
+    if (!shouldPoll) return;
 
     let cancelled = false;
-
     const poll = async () => {
       try {
         const response = await fetch(
@@ -145,18 +100,13 @@ export default function AportarPage() {
           { cache: "no-store" },
         );
         const payload = await response.json();
-        if (!response.ok || cancelled) {
-          return;
-        }
+        if (!response.ok || cancelled) return;
         setIntent(payload.intent as PublicIntent);
-      } catch {
-        // Ignore polling errors to keep UX resilient.
-      }
+      } catch {}
     };
 
     poll();
     const interval = window.setInterval(poll, 3000);
-
     return () => {
       cancelled = true;
       window.clearInterval(interval);
@@ -169,15 +119,12 @@ export default function AportarPage() {
     return new Date(expires).toLocaleString("es-ES");
   }, [intent?.expiresAt, intentData?.expiresAt]);
 
+  const FIELES_PRICE_CENTS = 5000; // 50€ — debe coincidir con BIZUM_FIELES_PRICE_EUR
+
   const amountLabel = useMemo(() => {
-    if (intentData) {
-      return formatMoney(intentData.amountCents, intentData.currency);
-    }
-    if (eventInfo) {
-      return formatMoney(eventInfo.fixedPriceCents * quantity, eventInfo.currency);
-    }
-    return "";
-  }, [eventInfo, intentData, quantity]);
+    if (intentData) return formatMoney(intentData.amountCents, intentData.currency);
+    return formatMoney(FIELES_PRICE_CENTS * quantity, "EUR");
+  }, [intentData, quantity]);
 
   async function handleCreateIntent() {
     setError("");
@@ -185,24 +132,12 @@ export default function AportarPage() {
     setIntent(null);
     setIntentData(null);
 
-    const normalizedUserKey = normalizedEmail;
-    if (!normalizedUserKey) {
-      setError("Introduce tu email.");
+    if (!normalizedEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setError("Introduce un email válido.");
       return;
     }
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(normalizedUserKey)) {
-      setError("Email no valido.");
-      return;
-    }
-
     if (!name.trim()) {
       setError("Introduce tu nombre.");
-      return;
-    }
-
-    if (knowsBilly === null) {
-      setError("Indica si conoces a Billy.");
       return;
     }
 
@@ -212,21 +147,18 @@ export default function AportarPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          eventId: eventInfo?.id,
-          userKey: normalizedUserKey,
+          userKey: normalizedEmail,
           buyerName: name.trim(),
           quantity,
-          knowsBilly,
+          ticketType: TICKET_TYPE,
         }),
       });
 
       const payload = (await response.json()) as CreateIntentResponse & { message?: string };
-      if (!response.ok) {
-        throw new Error(payload.message ?? "No se pudo crear el intento.");
-      }
+      if (!response.ok) throw new Error(payload.message ?? "No se pudo crear el intento.");
 
       setIntentData(payload);
-      setMessage(payload.reused ? "Intent existente reutilizado para este email y cantidad." : "Intent creado.");
+      setMessage(payload.reused ? "Intent existente reutilizado." : "Intent creado.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear el intento.");
     } finally {
@@ -236,30 +168,21 @@ export default function AportarPage() {
 
   async function handleConfirmSent() {
     if (!intentData) return;
-
     setConfirming(true);
     setError("");
     setMessage("");
-
     try {
       const response = await fetch("/api/confirm_sent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intentId: intentData.intentId,
-          userKey: email.trim().toLowerCase(),
-        }),
+        body: JSON.stringify({ intentId: intentData.intentId, userKey: email.trim().toLowerCase() }),
       });
-
       const payload = await response.json();
-      if (!response.ok) {
-        throw new Error(payload?.message ?? "No se pudo confirmar el envio.");
-      }
-
+      if (!response.ok) throw new Error(payload?.message ?? "No se pudo confirmar.");
       setIntent(payload.intent as PublicIntent);
-      setMessage("Aviso recibido. Estado cambiado a Confirmada.");
+      setMessage("Aviso recibido.");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo confirmar el envio.");
+      setError(err instanceof Error ? err.message : "No se pudo confirmar.");
     } finally {
       setConfirming(false);
     }
@@ -281,13 +204,15 @@ export default function AportarPage() {
       </header>
 
       <main className="container-pro py-8 md:py-12 lg:py-16 space-y-8 md:space-y-10">
-        <section className="card">
+        <section className="card border-yellow-500/30">
           <div className="space-y-3">
-            <h1 className="font-display font-bold text-3xl md:text-5xl tracking-tight">Entraditas para la Triple Nelson</h1>
+            <div className="inline-flex items-center gap-2 rounded-full border border-yellow-500/40 bg-yellow-500/10 px-3 py-1 text-xs uppercase tracking-widest text-yellow-300">
+              ★ Entrada Fieles
+            </div>
+            <h1 className="font-display font-bold text-3xl md:text-5xl tracking-tight">Acceso Fieles · Triple Nelson</h1>
             <p className="text-zinc-400 text-sm md:text-base">
-              Evento privado con precio fijo. Te daremos el numero de Bizum y un codigo para el asunto.
+              Precio especial para los más fieles. Te daremos el número de Bizum y un código para el asunto.
             </p>
-            {eventError ? <p className="text-rose-300 text-sm">{eventError}</p> : null}
           </div>
 
           <div className="mt-6 grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
@@ -295,7 +220,7 @@ export default function AportarPage() {
               <label className="block text-xs uppercase tracking-widest text-zinc-500">Nombre</label>
               <input
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 placeholder="Tu nombre y apellido"
                 type="text"
                 required
@@ -304,14 +229,13 @@ export default function AportarPage() {
               <label className="block text-xs uppercase tracking-widest text-zinc-500">Email</label>
               <input
                 value={email}
-                onChange={(event) => setEmail(event.target.value)}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="tu.email@dominio.com"
                 type="email"
                 required
-                pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                 className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
               />
-              <label className="block text-xs uppercase tracking-widest text-zinc-500">Numero de entradas</label>
+              <label className="block text-xs uppercase tracking-widest text-zinc-500">Número de entradas</label>
               <div className="flex items-center gap-3">
                 <button
                   type="button"
@@ -334,48 +258,23 @@ export default function AportarPage() {
                 </button>
               </div>
               {email.length > 0 && !isEmailValid ? (
-                <p className="text-xs text-rose-300">Introduce un email valido para recibir tu QR.</p>
+                <p className="text-xs text-rose-300">Introduce un email válido para recibir tu QR.</p>
               ) : null}
-              <label className="block text-xs uppercase tracking-widest text-zinc-500">¿Conoces a Billy?</label>
-              <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setKnowsBilly(true)}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-sm transition-colors ${
-                    knowsBilly === true
-                      ? "border-emerald-500 bg-emerald-500/20 text-emerald-200"
-                      : "border-zinc-700 bg-black/40 text-zinc-300 hover:border-zinc-500"
-                  }`}
-                >
-                  Sí
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setKnowsBilly(false)}
-                  className={`flex-1 rounded-xl border px-4 py-3 text-sm transition-colors ${
-                    knowsBilly === false
-                      ? "border-rose-500 bg-rose-500/20 text-rose-200"
-                      : "border-zinc-700 bg-black/40 text-zinc-300 hover:border-zinc-500"
-                  }`}
-                >
-                  No
-                </button>
-              </div>
               <button
                 type="button"
                 onClick={handleCreateIntent}
-                disabled={loadingIntent || !name.trim() || !isEmailValid || knowsBilly === null}
+                disabled={loadingIntent || !name.trim() || !isEmailValid}
                 className="btn-primary text-xs md:text-sm py-3 md:py-4 disabled:opacity-60"
               >
                 {loadingIntent ? "Generando..." : "Generar instrucciones Bizum"}
               </button>
             </div>
 
-            <div className="rounded-2xl border border-zinc-800/80 bg-black/30 p-4 space-y-2">
-              <div className="text-xs uppercase tracking-widest text-zinc-500">Total Bizum</div>
-              <div className="font-display text-3xl md:text-4xl">{amountLabel || "--"}</div>
+            <div className="rounded-2xl border border-yellow-500/30 bg-yellow-500/5 p-4 space-y-2">
+              <div className="text-xs uppercase tracking-widest text-yellow-500/70">Total Bizum</div>
+              <div className="font-display text-3xl md:text-4xl text-yellow-300">{amountLabel}</div>
               <div className="text-xs text-zinc-500">
-                {eventInfo?.name ?? "Evento"} · {intentData?.quantity ?? quantity} entrada(s)
+                {quantity} entrada{quantity !== 1 ? "s" : ""} · ENTRADA FIELES
               </div>
             </div>
           </div>
@@ -387,25 +286,18 @@ export default function AportarPage() {
         {intentData ? (
           <section className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
             <div className="card space-y-4">
-              <h2 className="font-display text-2xl md:text-3xl">Datos de envio</h2>
+              <h2 className="font-display text-2xl md:text-3xl">Datos de envío</h2>
 
               <div className="space-y-2">
-                <div className="text-xs uppercase tracking-widest text-zinc-500">Telefono receptor</div>
+                <div className="text-xs uppercase tracking-widest text-zinc-500">Teléfono receptor</div>
                 {intentData.receiverLabel ? (
-                  <p className="text-xs text-zinc-400">Envia a <span className="font-semibold text-zinc-200">{intentData.receiverLabel}</span></p>
+                  <p className="text-xs text-zinc-400">Envía a <span className="font-semibold text-zinc-200">{intentData.receiverLabel}</span></p>
                 ) : null}
                 <div className="flex items-center gap-2">
                   <div className="flex-1 rounded-xl border border-zinc-700 bg-black/30 px-4 py-3 font-mono text-lg">
                     {intentData.phone}
                   </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const copied = await safeCopy(intentData.phone);
-                      setMessage(copied ? "Telefono copiado." : "No se pudo copiar.");
-                    }}
-                    className="btn-secondary text-[10px] md:text-xs px-4 py-3"
-                  >
+                  <button type="button" onClick={async () => { const ok = await safeCopy(intentData.phone); setMessage(ok ? "Teléfono copiado." : "No se pudo copiar."); }} className="btn-secondary text-[10px] md:text-xs px-4 py-3">
                     Copiar
                   </button>
                 </div>
@@ -414,45 +306,27 @@ export default function AportarPage() {
               <div className="space-y-2">
                 <div className="text-xs uppercase tracking-widest text-zinc-500">Importe</div>
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 rounded-xl border border-zinc-700 bg-black/30 px-4 py-3 font-mono text-lg">
+                  <div className="flex-1 rounded-xl border border-yellow-500/40 bg-yellow-500/5 px-4 py-3 font-mono text-lg text-yellow-300">
                     {formatMoney(intentData.amountCents, intentData.currency)}
                   </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const copied = await safeCopy((intentData.amountCents / 100).toFixed(2));
-                      setMessage(copied ? "Importe copiado." : "No se pudo copiar.");
-                    }}
-                    className="btn-secondary text-[10px] md:text-xs px-4 py-3"
-                  >
+                  <button type="button" onClick={async () => { const ok = await safeCopy((intentData.amountCents / 100).toFixed(2)); setMessage(ok ? "Importe copiado." : "No se pudo copiar."); }} className="btn-secondary text-[10px] md:text-xs px-4 py-3">
                     Copiar
                   </button>
                 </div>
-                <p className="text-xs text-zinc-500">
-                  {intentData.quantity} entrada(s) · {formatMoney(intentData.amountCents, intentData.currency)} total
-                </p>
+                <p className="text-xs text-zinc-500">{intentData.quantity} entrada{intentData.quantity !== 1 ? "s" : ""} · {formatMoney(intentData.amountCents, intentData.currency)} total</p>
               </div>
 
               <div className="space-y-2">
-                <div className="text-xs uppercase tracking-widest text-zinc-500">Codigo para asunto/concepto</div>
+                <div className="text-xs uppercase tracking-widest text-zinc-500">Código para asunto/concepto</div>
                 <div className="flex items-center gap-2">
                   <div className="flex-1 rounded-xl border border-zinc-700 bg-black/30 px-4 py-3 font-mono text-lg">
                     {intentData.paymentRef}
                   </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      const copied = await safeCopy(intentData.paymentRef);
-                      setMessage(copied ? "Codigo copiado." : "No se pudo copiar.");
-                    }}
-                    className="btn-secondary text-[10px] md:text-xs px-4 py-3"
-                  >
+                  <button type="button" onClick={async () => { const ok = await safeCopy(intentData.paymentRef); setMessage(ok ? "Código copiado." : "No se pudo copiar."); }} className="btn-secondary text-[10px] md:text-xs px-4 py-3">
                     Copiar
                   </button>
                 </div>
-                <p className="text-xs text-zinc-500">
-                  Pon exactamente este codigo en el asunto/concepto del Bizum para poder rastrear tu pago.
-                </p>
+                <p className="text-xs text-zinc-500">Pon exactamente este código en el asunto/concepto del Bizum para poder rastrear tu pago.</p>
               </div>
 
               <p className="mt-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-3 text-sm text-sky-200">
@@ -476,46 +350,29 @@ export default function AportarPage() {
                   <p className="text-sm text-amber-200/80 leading-relaxed">
                     Cuando el administrador confirme tu pago, recibirás tus entradas por email. Es posible que el mensaje acabe en la carpeta de <strong>correo no deseado o spam</strong> — revísala antes de contactar.
                   </p>
-                  <p className="text-xs text-zinc-400">
-                    Enviando a <span className="font-mono">{normalizedEmail}</span>
-                  </p>
+                  <p className="text-xs text-zinc-400">Enviando a <span className="font-mono">{normalizedEmail}</span></p>
                 </div>
               ) : null}
             </div>
 
             <div className="card space-y-4">
               <h2 className="font-display text-2xl md:text-3xl">Estado del intento</h2>
-
               {status ? (
                 <div className={`inline-flex rounded-full border px-4 py-2 text-xs uppercase tracking-widest ${statusClass(status)}`}>
                   {statusLabel(status)}
                 </div>
               ) : null}
-
               <div className="space-y-2 text-sm text-zinc-400">
-                <p>
-                  <span className="text-zinc-500">Intent ID:</span> {intentData.intentId}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Codigo de seguimiento:</span> {intentData.paymentRef}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Entradas:</span> {intentData.quantity}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Expira:</span> {expiresAtLabel}
-                </p>
-                <p>
-                  <span className="text-zinc-500">Transicion esperada:</span> Pendiente -&gt; Confirmada -&gt; Pagada
-                </p>
+                <p><span className="text-zinc-500">Intent ID:</span> {intentData.intentId}</p>
+                <p><span className="text-zinc-500">Código de seguimiento:</span> {intentData.paymentRef}</p>
+                <p><span className="text-zinc-500">Entradas:</span> {intentData.quantity}</p>
+                <p><span className="text-zinc-500">Expira:</span> {expiresAtLabel}</p>
               </div>
-
               {intent?.ticketCodes && intent.ticketCodes.length > 0 ? (
                 <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
                   Tickets generados: <span className="font-mono">{intent.ticketCodes.join(", ")}</span>
                 </div>
               ) : null}
-
               {status === "EXPIRED" ? (
                 <button type="button" className="btn-secondary text-xs" onClick={handleCreateIntent}>
                   Crear nuevo intento
