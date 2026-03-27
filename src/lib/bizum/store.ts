@@ -96,7 +96,8 @@ function normalizeDb(candidate: Partial<BizumDb> | null | undefined): BizumDb {
         ? candidate.receivers.map((receiver, index) => ({
             ...receiver,
             label: DEFAULT_RECEIVER_LABELS[index] || receiver.label,
-            email: receiver.email || DEFAULT_RECEIVER_EMAILS[index] || undefined,
+            phone: normalizePhone(DEFAULT_RECEIVERS[index]) || receiver.phone,
+            email: DEFAULT_RECEIVER_EMAILS[index] || receiver.email || undefined,
           }))
         : seed.receivers,
     payment_intents: Array.isArray(candidate.payment_intents)
