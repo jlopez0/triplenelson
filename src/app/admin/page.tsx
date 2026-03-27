@@ -116,6 +116,10 @@ export default function AdminPage() {
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
+  const [editingIntent, setEditingIntent] = useState<AdminIntent | null>(null);
+  const [editFields, setEditFields] = useState<{ userKey: string; buyerName: string; ticketType: string; quantity: number; amountCents: string; receiverPhone: string; status: AdminIntent["status"] }>({ userKey: "", buyerName: "", ticketType: "", quantity: 1, amountCents: "", receiverPhone: "", status: "CREATED" });
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const [showManualModal, setShowManualModal] = useState(false);
   const [manualEmail, setManualEmail] = useState("");
   const [manualName, setManualName] = useState("");
@@ -295,6 +299,51 @@ export default function AdminPage() {
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo borrar.");
+    }
+  }
+
+  function openEdit(item: AdminIntent) {
+    setEditFields({
+      userKey: item.userKey,
+      buyerName: item.buyerName ?? "",
+      ticketType: item.ticketType ?? "",
+      quantity: item.quantity,
+      amountCents: (item.amountCents / 100).toFixed(2),
+      receiverPhone: item.receiverPhone,
+      status: item.status,
+    });
+    setEditingIntent(item);
+  }
+
+  async function saveEdit() {
+    if (!editingIntent) return;
+    setError(""); setMessage("");
+    setSavingEdit(true);
+    try {
+      const amountCents = Math.round(parseFloat(editFields.amountCents.replace(",", ".")) * 100);
+      if (isNaN(amountCents) || amountCents < 0) throw new Error("Importe inválido.");
+      const res = await fetch(`/api/admin/intents/${editingIntent.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", ...currentAuthHeader() },
+        body: JSON.stringify({
+          userKey: editFields.userKey.trim(),
+          buyerName: editFields.buyerName.trim() || undefined,
+          ticketType: editFields.ticketType.trim() || undefined,
+          quantity: editFields.quantity,
+          amountCents,
+          receiverPhone: editFields.receiverPhone.trim(),
+          status: editFields.status,
+        }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.message ?? "No se pudo guardar.");
+      setMessage("Intent actualizado.");
+      setEditingIntent(null);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar.");
+    } finally {
+      setSavingEdit(false);
     }
   }
 
@@ -570,13 +619,16 @@ export default function AdminPage() {
                         <td className="py-3 pr-3">
                           <div className="flex gap-2">
                             <button type="button" onClick={() => markPaid(item.id)} disabled={loading} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40">
-                              ✓ Pagar
+                              ✓ Pagado
                             </button>
                             <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-3 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">
                               ✗ Rechazar
                             </button>
+                            <button type="button" onClick={() => openEdit(item)} disabled={loading} className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-3 py-1 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-40">
+                              ✎
+                            </button>
                             <button type="button" onClick={() => deleteIntentById(item.id, false)} disabled={loading} className="rounded-lg border border-zinc-600/40 bg-zinc-700/20 px-3 py-1 text-xs text-zinc-400 hover:bg-zinc-700/40 disabled:opacity-40">
-                              🗑
+                              Borrar
                             </button>
                           </div>
                         </td>
@@ -632,11 +684,12 @@ export default function AdminPage() {
                           <div className="flex gap-2">
                             {(item.status === "USER_CONFIRMED" || item.status === "CREATED") && (
                               <>
-                                <button type="button" onClick={() => markPaid(item.id)} disabled={loading} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40">✓</button>
-                                <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">✗</button>
+                                <button type="button" onClick={() => markPaid(item.id)} disabled={loading} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40">✓ Pagado</button>
+                                <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">✗ Rechazar</button>
                               </>
                             )}
-                            <button type="button" onClick={() => deleteIntentById(item.id, item.status === "PAID")} disabled={loading} className="rounded-lg border border-zinc-600/40 bg-zinc-700/20 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700/40 disabled:opacity-40">🗑</button>
+                            <button type="button" onClick={() => openEdit(item)} disabled={loading} className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-40">✎ Editar</button>
+                            <button type="button" onClick={() => deleteIntentById(item.id, item.status === "PAID")} disabled={loading} className="rounded-lg border border-zinc-600/40 bg-zinc-700/20 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700/40 disabled:opacity-40">Borrar</button>
                           </div>
                         </td>
                       </tr>
@@ -660,6 +713,69 @@ export default function AdminPage() {
         </section>
 
       </main>
+
+      {/* Modal: editar intent */}
+      {editingIntent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+          <div className="w-full max-w-md rounded-2xl border border-zinc-700 bg-zinc-950 p-6 space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-xl">Editar intent</h2>
+                <p className="text-xs text-zinc-500 font-mono mt-0.5">{editingIntent.paymentRef}</p>
+              </div>
+              <button type="button" onClick={() => setEditingIntent(null)} className="text-zinc-500 hover:text-white text-lg">✕</button>
+            </div>
+
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Email</label>
+                <input type="email" value={editFields.userKey} onChange={(e) => setEditFields((f) => ({ ...f, userKey: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Nombre comprador</label>
+                <input type="text" value={editFields.buyerName} onChange={(e) => setEditFields((f) => ({ ...f, buyerName: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Tipo de entrada</label>
+                <input type="text" value={editFields.ticketType} onChange={(e) => setEditFields((f) => ({ ...f, ticketType: e.target.value }))} placeholder="ENTRADA NORMAL, ENTRADA FIELES..." className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Entradas</label>
+                  <input type="number" min={1} max={10} value={editFields.quantity} onChange={(e) => setEditFields((f) => ({ ...f, quantity: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+                </div>
+                <div>
+                  <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Importe (€)</label>
+                  <input type="text" inputMode="decimal" value={editFields.amountCents} onChange={(e) => setEditFields((f) => ({ ...f, amountCents: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+                </div>
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Teléfono receptor</label>
+                <input type="text" value={editFields.receiverPhone} onChange={(e) => setEditFields((f) => ({ ...f, receiverPhone: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+              </div>
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Estado</label>
+                <select value={editFields.status} onChange={(e) => setEditFields((f) => ({ ...f, status: e.target.value as AdminIntent["status"] }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400">
+                  <option value="CREATED">En espera</option>
+                  <option value="USER_CONFIRMED">Por verificar</option>
+                  <option value="PAID">Pagado</option>
+                  <option value="REJECTED">Rechazado</option>
+                  <option value="EXPIRED">Expirado</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button type="button" onClick={saveEdit} disabled={savingEdit} className="btn-primary flex-1 text-sm py-3 disabled:opacity-50">
+                {savingEdit ? "Guardando..." : "Guardar cambios"}
+              </button>
+              <button type="button" onClick={() => setEditingIntent(null)} className="btn-secondary text-sm py-3 px-5">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal: pago manual */}
       {showManualModal && (

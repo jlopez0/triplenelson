@@ -128,36 +128,9 @@ function ensureRateLimit(params: {
   }
 }
 
-function expireStaleIntentsInDb(db: BizumDb, nowDate: Date): number {
-  const now = nowDate.getTime();
-  let expiredCount = 0;
-
-  for (const intent of db.payment_intents) {
-    if (!ACTIVE_INTENT_STATUSES.includes(intent.status)) {
-      continue;
-    }
-
-    if (new Date(intent.expiresAt).getTime() >= now) {
-      continue;
-    }
-
-    intent.status = "EXPIRED";
-    intent.expiredAt = nowIso();
-    intent.updatedAt = nowIso();
-    intent.version += 1;
-    expiredCount += 1;
-    db.audit_logs.push(
-      buildAuditLog({
-        action: "INTENT_EXPIRED",
-        actorType: "SYSTEM",
-        actorKey: "scheduler",
-        intentId: intent.id,
-        eventId: intent.eventId,
-      }),
-    );
-  }
-
-  return expiredCount;
+function expireStaleIntentsInDb(_db: BizumDb, _nowDate: Date): number {
+  // Expiration disabled — intents remain open until manually rejected or paid.
+  return 0;
 }
 
 function pickReceiver(params: {
@@ -498,7 +471,7 @@ export async function createOrReuseIntent(params: {
 
     const receiver = pickReceiver({ db, eventId: event.id, userKey, nowDate });
     const createdAt = nowIso();
-    const expiresAt = new Date(nowDate.getTime() + INTENT_TTL_MINUTES * 60_000).toISOString();
+    const expiresAt = new Date(nowDate.getTime() + 365 * 24 * 60 * 60_000).toISOString();
     const existingRefs = new Set(db.payment_intents.map((i) => i.paymentRef));
     const intent: PaymentIntent = {
       id: `pi_${randomUUID().replace(/-/g, "").slice(0, 24)}`,
@@ -614,7 +587,7 @@ export async function confirmSent(params: { intentId: string; userKey: string; i
       intent.confirmedAt = timestamp;
       intent.updatedAt = timestamp;
       // Extend expiry to 7 days so the receiver has time to validate via email link
-      intent.expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      intent.expiresAt = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString();
       intent.version += 1;
       db.audit_logs.push(
         buildAuditLog({
@@ -934,6 +907,58 @@ export async function createManualIntent(params: {
   }
 
   return { ...marked, emailDelivery };
+}
+
+export async function updateIntent(params: {
+  intentId: string;
+  adminKey: string;
+  ip: string;
+  patch: {
+    userKey?: string;
+    buyerName?: string;
+    ticketType?: string;
+    quantity?: number;
+    amountCents?: number;
+    receiverPhone?: string;
+    status?: PaymentIntentStatus;
+  };
+}) {
+  if (!params.intentId?.trim()) {
+    throw new BizumServiceError({ code: "INVALID_INTENT_ID", statusCode: 400, message: "intentId is required." });
+  }
+
+  return withDbTransaction((db) => {
+    const intent = db.payment_intents.find((i) => i.id === params.intentId.trim());
+    if (!intent) {
+      throw new BizumServiceError({ code: "INTENT_NOT_FOUND", statusCode: 404, message: "Intent not found." });
+    }
+
+    const p = params.patch;
+    if (p.userKey !== undefined) intent.userKey = normalizeUserKey(p.userKey);
+    if (p.buyerName !== undefined) intent.buyerName = p.buyerName.trim() || undefined;
+    if (p.ticketType !== undefined) intent.ticketType = p.ticketType.trim() || undefined;
+    if (p.quantity !== undefined) intent.quantity = Math.max(1, Math.min(MAX_TICKETS_PER_PURCHASE, Math.round(p.quantity)));
+    if (p.amountCents !== undefined) intent.amountCents = Math.max(0, Math.round(p.amountCents));
+    if (p.receiverPhone !== undefined) intent.receiverPhone = p.receiverPhone.replace(/\s+/g, "").trim();
+    if (p.status !== undefined) intent.status = p.status;
+
+    intent.updatedAt = nowIso();
+    intent.version += 1;
+
+    db.audit_logs.push(
+      buildAuditLog({
+        action: "ADMIN_UPDATED",
+        actorType: "ADMIN",
+        actorKey: params.adminKey,
+        ip: params.ip,
+        intentId: intent.id,
+        eventId: intent.eventId,
+        metadata: { patch: p },
+      }),
+    );
+
+    return toPublicIntent(intent);
+  });
 }
 
 export async function deleteIntent(params: { intentId: string; adminKey: string; ip: string }) {
