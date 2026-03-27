@@ -118,6 +118,7 @@ export default function AdminPage() {
 
   const [editingIntent, setEditingIntent] = useState<AdminIntent | null>(null);
   const [editFields, setEditFields] = useState<{ userKey: string; buyerName: string; ticketType: string; quantity: number; amountCents: string; receiverPhone: string; status: AdminIntent["status"] }>({ userKey: "", buyerName: "", ticketType: "", quantity: 1, amountCents: "", receiverPhone: "", status: "CREATED" });
+  const [editCustomType, setEditCustomType] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
   const [showManualModal, setShowManualModal] = useState(false);
@@ -302,16 +303,21 @@ export default function AdminPage() {
     }
   }
 
+  const PRESET_TYPES = ["ENTRADA NORMAL", "ENTRADA FIELES", "INVITACIÓN"];
+
   function openEdit(item: AdminIntent) {
+    const current = item.ticketType ?? "ENTRADA NORMAL";
+    const isPreset = PRESET_TYPES.includes(current);
     setEditFields({
       userKey: item.userKey,
       buyerName: item.buyerName ?? "",
-      ticketType: item.ticketType ?? "",
+      ticketType: isPreset ? current : "__custom__",
       quantity: item.quantity,
       amountCents: (item.amountCents / 100).toFixed(2),
       receiverPhone: item.receiverPhone,
       status: item.status,
     });
+    setEditCustomType(isPreset ? "" : current);
     setEditingIntent(item);
   }
 
@@ -322,13 +328,14 @@ export default function AdminPage() {
     try {
       const amountCents = Math.round(parseFloat(editFields.amountCents.replace(",", ".")) * 100);
       if (isNaN(amountCents) || amountCents < 0) throw new Error("Importe inválido.");
+      const ticketType = editFields.ticketType === "__custom__" ? editCustomType.trim() : editFields.ticketType;
       const res = await fetch(`/api/admin/intents/${editingIntent.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json", ...currentAuthHeader() },
         body: JSON.stringify({
           userKey: editFields.userKey.trim(),
           buyerName: editFields.buyerName.trim() || undefined,
-          ticketType: editFields.ticketType.trim() || undefined,
+          ticketType: ticketType || undefined,
           quantity: editFields.quantity,
           amountCents,
           receiverPhone: editFields.receiverPhone.trim(),
@@ -737,7 +744,15 @@ export default function AdminPage() {
               </div>
               <div>
                 <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Tipo de entrada</label>
-                <input type="text" value={editFields.ticketType} onChange={(e) => setEditFields((f) => ({ ...f, ticketType: e.target.value }))} placeholder="ENTRADA NORMAL, ENTRADA FIELES..." className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+                <select value={editFields.ticketType} onChange={(e) => setEditFields((f) => ({ ...f, ticketType: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400">
+                  <option value="ENTRADA NORMAL">ENTRADA NORMAL</option>
+                  <option value="ENTRADA FIELES">ENTRADA FIELES</option>
+                  <option value="INVITACIÓN">INVITACIÓN</option>
+                  <option value="__custom__">Otro (personalizado)</option>
+                </select>
+                {editFields.ticketType === "__custom__" && (
+                  <input type="text" value={editCustomType} onChange={(e) => setEditCustomType(e.target.value)} placeholder="Ej: PRESS, STAFF..." className="mt-2 w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+                )}
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>

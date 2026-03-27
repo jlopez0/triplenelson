@@ -217,6 +217,7 @@ export default function AportarPage() {
           buyerName: name.trim(),
           quantity,
           knowsBilly,
+          ticketType: "ENTRADA NORMAL",
         }),
       });
 
