@@ -8,7 +8,9 @@ declare global {
 async function initFirestore(): Promise<Firestore> {
   const projectId = process.env.FIREBASE_PROJECT_ID;
   const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
-  const privateKey = (process.env.FIREBASE_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
+  const privateKey = (process.env.FIREBASE_PRIVATE_KEY ?? "")
+    .replace(/^["']|["']$/g, "") // eliminar comillas externas si Vercel las incluyó
+    .replace(/\\n/g, "\n");      // convertir \n literales a saltos de línea reales
 
   if (!projectId || !clientEmail || !privateKey) {
     throw new Error(
