@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Read(//mnt/c/Users/javie/Documents/AA.Proyectos/**)",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson && npm install firebase-admin\")",
+      "Bash(cmd /c \"cd /d C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson && npm install firebase-admin 2>&1\")",
+      "Bash(powershell -Command \"Set-Location ''C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson''; npm install firebase-admin\")",
+      "Bash(where node:*)",
+      "Bash(where npm:*)",
+      "Bash(powershell -Command \"Get-Command node,npm -ErrorAction SilentlyContinue | Select-Object Name,Source\")",
+      "Read(//c/Users/javie/**)",
+      "Bash(wsl ls:*)",
+      "Bash(npm --version)",
+      "Bash(echo $SHELL)",
+      "Bash(echo $PATH)",
+      "Read(//c/Program Files/**)",
+      "Bash(wsl -e bash -c \"ls /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/\")",
+      "Bash(wsl -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && npm install firebase-admin 2>&1\")",
+      "Bash(wsl -e bash -c \"rm /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/data/bizum-db.json && echo ''Eliminado''\")",
+      "Bash(wsl -e bash -c \"rm /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/scripts/migrate-to-firebase.mjs && echo ''Eliminado''\")",
+      "Bash(wsl -e bash -c \"rm /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/triplenelson-7e9f3-firebase-adminsdk-fbsvc-cc7e0336bf.json && echo ''Eliminado''\")",
+      "Bash(xargs grep:*)",
+      "Bash(wsl -e bash -c \"rm -rf /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/src/app/create_intent /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/src/app/confirm_sent /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/src/app/intent /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/src/app/mark_paid /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/src/app/reject /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/src/app/expire_intents && echo ''Eliminados 6 proxy routes''\")",
+      "Bash(wsl -e bash -c \"rm -rf /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/.next && echo ''Cache .next eliminada''\")",
+      "Bash(grep -r \"bizum-db\\\\|/data\\\\|readFileSync\\\\|writeFileSync\" /c/Users/javie/Documents/AA.Proyectos/triplenelson/src --include=*.ts --include=*.tsx)",
+      "Bash(npm list:*)",
+      "Bash(wsl -e bash -c \"rm -rf /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/.next && echo ''OK''\")",
+      "Bash(wsl -e bash -c \"rm -rf /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/.next && mkdir -p /tmp/triplenelson-next && ln -s /tmp/triplenelson-next /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson/.next && echo ''Symlink creado: .next -> /tmp/triplenelson-next''\")",
+      "Bash(npm -v)",
+      "Bash(powershell.exe -Command \"where.exe node\")",
+      "Bash(powershell.exe -Command \"Get-Command node -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source\")",
+      "Bash(powershell.exe -Command \"node -v\")",
+      "Bash(wsl.exe -e bash -c \"which node && node -v\")",
+      "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && cat next.config.mjs\")",
+      "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && ls -la .next 2>&1 || echo ''No .next dir - will be created fresh''\")",
+      "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && ls node_modules/.package-lock.json 2>&1 || echo ''Need npm install''\")",
+      "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && npx next build 2>&1 | head -60\")",
+      "Bash(time curl:*)"
+    ]
+  }
+}

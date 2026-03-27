@@ -1,0 +1,32 @@
+[
+  {
+    "id": "prize-1",
+    "label": "Premio 1",
+    "revealAt": "2026-06-20T20:30:00",
+    "prize": "Consumicion gratis"
+  },
+  {
+    "id": "prize-2",
+    "label": "Premio 2",
+    "revealAt": "2026-06-20T21:30:00",
+    "prize": "Acceso VIP"
+  },
+  {
+    "id": "prize-3",
+    "label": "Premio 3",
+    "revealAt": "2026-06-20T22:30:00",
+    "prize": "Merch oficial"
+  },
+  {
+    "id": "prize-4",
+    "label": "Premio 4",
+    "revealAt": "2026-06-20T23:30:00",
+    "prize": "Botella premium"
+  },
+  {
+    "id": "prize-5",
+    "label": "Premio 5",
+    "revealAt": "2026-06-21T00:30:00",
+    "prize": "Premio sorpresa final"
+  }
+]

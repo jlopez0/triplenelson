@@ -3,18 +3,23 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "test:email": "node scripts/test-resend-email.mjs"
   },
   "dependencies": {
+    "@types/qrcode": "^1.5.6",
     "canvas-confetti": "^1.9.2",
     "clsx": "^2.1.0",
     "date-fns": "^3.3.1",
+    "firebase-admin": "^13.7.0",
     "framer-motion": "^11.0.8",
     "lucide-react": "^0.344.0",
     "next": "14.1.0",
+    "pdf-lib": "^1.17.1",
+    "qrcode": "^1.5.4",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.0",

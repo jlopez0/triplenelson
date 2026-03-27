@@ -1,8 +1,11 @@
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { HomeCountdown } from '@/components/features/HomeCountdown';
 import { getTimeLeft } from '@/lib/countdown';
 
-export const dynamic = 'force-dynamic';
+const UfoAnimation = dynamic(() => import('@/components/UfoAnimation').then(m => ({ default: m.UfoAnimation })), {
+  ssr: false,
+});
 
 const TARGET_TIMESTAMP = new Date('2026-06-20T23:59:59').getTime();
 
@@ -10,7 +13,9 @@ export default function HomePage() {
   const initialTimeLeft = getTimeLeft(TARGET_TIMESTAMP);
 
   return (
-    <div className="h-screen bg-techno flex flex-col">
+    <div className="min-h-screen bg-techno flex flex-col">
+      <UfoAnimation />
+      <div className="relative z-[1] flex flex-col flex-1">
       {/* Hero Section - Balanced */}
       <section className="container-pro py-6 md:py-8 lg:py-10 flex-1 flex items-center">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 lg:gap-10 w-full">
@@ -43,24 +48,17 @@ export default function HomePage() {
             <div className="h-px bg-gradient-to-r from-zinc-700 via-zinc-500 to-transparent hidden lg:block" />
 
             <p className="text-sm md:text-lg lg:text-xl text-zinc-400 font-light max-w-2xl leading-relaxed">
-              Segunda edicion de la unica e inigualable TRIPLE NELSON. Otro ano mas donde podremos disfrutar de un dia lleno de emocion, divertidos eventos, premios y la mejor musica del panorama del techno nacional.
+              Segunda edición de la única e inigualable TRIPLE NELSON. Otro año más donde podremos disfrutar de un día lleno de emoción, divertidos eventos, premios y la mejor música del panorama del techno nacional.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 md:gap-4">
-              <button
-                type="button"
-                disabled
-                aria-disabled="true"
-                className="btn-primary text-xs md:text-sm py-3 md:py-4 opacity-60 cursor-not-allowed"
-                title="Proximamente"
-              >
-                Entradas Proximamente
-              </button>
+              <Link href="/aportar" className="btn-primary text-xs md:text-sm py-3 md:py-4 text-center">
+                Conseguir Entrada
+              </Link>
               <Link href="/lineup" className="btn-secondary text-xs md:text-sm py-3 md:py-4 text-center">
                 Ver Line-up
               </Link>
             </div>
-            <p className="text-xs md:text-sm text-zinc-500">La compra de entradas aun no esta implementada.</p>
 
             <div className="flex items-center gap-4 md:gap-5 pt-2">
               <div className="flex items-center gap-2">
@@ -70,6 +68,8 @@ export default function HomePage() {
               <div className="h-4 w-px bg-zinc-800" />
               <span className="text-xs md:text-sm text-zinc-500">20 Junio 2026</span>
             </div>
+
+
           </div>
         </div>
       </section>
@@ -95,6 +95,7 @@ export default function HomePage() {
           ))}
         </div>
       </section>
+      </div>
     </div>
   );
 }

@@ -14,6 +14,8 @@ build
 # Misc
 .DS_Store
 *.pem
+*firebase-adminsdk*.json
+data/
 
 # Debug
 npm-debug.log*
