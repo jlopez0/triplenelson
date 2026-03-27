@@ -111,6 +111,7 @@ export function UfoAnimation() {
 
   return (
     <motion.div
+      initial={{ opacity: 0 }}
       animate={controls}
       style={{
         position: "fixed",
