@@ -901,7 +901,7 @@ export async function createManualIntent(params: {
     };
   });
 
-  let emailDelivery = { attempted: 0, sent: 0, skipped: true, reason: "No tickets." };
+  let emailDelivery: { attempted: number; sent: number; skipped: boolean; reason?: string } = { attempted: 0, sent: 0, skipped: true, reason: "No tickets." };
   if ((marked.intent.ticketCodes?.length ?? 0) > 0) {
     try {
       emailDelivery = await sendTicketsByEmail({
