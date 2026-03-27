@@ -36,7 +36,14 @@
       "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && ls -la .next 2>&1 || echo ''No .next dir - will be created fresh''\")",
       "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && ls node_modules/.package-lock.json 2>&1 || echo ''Need npm install''\")",
       "Bash(wsl.exe -e bash -c \"cd /mnt/c/Users/javie/Documents/AA.Proyectos/triplenelson && npx next build 2>&1 | head -60\")",
-      "Bash(time curl:*)"
+      "Bash(time curl:*)",
+      "Bash(npm run:*)",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson && npm run build 2>&1\")",
+      "Bash(cmd.exe /c \"cd /d C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson && npm run build\")",
+      "Bash(powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson''; npm run build 2>&1\")",
+      "Read(//c//**)",
+      "Bash(npx tsc:*)",
+      "Read(//mnt/c/Users/javie/**)"
     ]
   }
 }

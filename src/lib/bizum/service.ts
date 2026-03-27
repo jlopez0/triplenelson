@@ -281,19 +281,20 @@ async function sendTicketsByEmail(params: {
     `);
   }
 
+  const displayName = "TRIPLE NELSON 2026";
   const subject =
     ticketCount === 1
-      ? `Tu entrada para ${params.eventName}`
-      : `Tus ${ticketCount} entradas para ${params.eventName}`;
+      ? `Tu entrada para ${displayName}`
+      : `Tus ${ticketCount} entradas para ${displayName}`;
 
   await resend.emails.send({
     from,
     to: params.to,
     subject,
-    text: `Tus ${ticketCount} entrada(s) de ${params.eventName}. Referencia: ${params.paymentRef}.`,
+    text: `Tus ${ticketCount} entrada(s) de ${displayName}. Referencia: ${params.paymentRef}.`,
     html: `
       <div style="font-family:Arial,sans-serif;color:#111">
-        <h2 style="margin-bottom:8px">Tus entradas de ${params.eventName}</h2>
+        <h2 style="margin-bottom:8px">Tus entradas de ${displayName}</h2>
         <p style="margin:0 0 8px 0">Referencia de pago: <strong>${params.paymentRef}</strong></p>
         <p style="margin:0 0 16px 0">Importe total pagado: <strong>${(params.amountCents / 100).toFixed(2)} ${params.currency}</strong></p>
         ${ticketBlocks.join("")}
@@ -438,36 +439,6 @@ export async function createOrReuseIntent(params: {
     expireStaleIntentsInDb(db, nowDate);
     const event = getEventOrThrow(db, eventId);
     const pricePerUnit = isFieles ? FIELES_PRICE_CENTS : event.fixedPriceCents;
-
-    const existing = db.payment_intents.find((intent) => {
-      if (intent.eventId !== event.id || intent.userKey !== userKey || intent.quantity !== quantity) {
-        return false;
-      }
-      if (!ACTIVE_INTENT_STATUSES.includes(intent.status)) {
-        return false;
-      }
-      return new Date(intent.expiresAt).getTime() > nowDate.getTime();
-    });
-
-    if (existing) {
-      db.audit_logs.push(
-        buildAuditLog({
-          action: "INTENT_REUSED",
-          actorType: "USER",
-          actorKey: userKey,
-          ip: params.ip,
-          intentId: existing.id,
-          eventId: event.id,
-        }),
-      );
-      const existingReceiver = db.receivers.find((r) => r.id === existing.receiverId);
-      return {
-        reused: true,
-        event,
-        intent: toPublicIntent(existing),
-        receiverLabel: existingReceiver?.label ?? "",
-      };
-    }
 
     const receiver = pickReceiver({ db, eventId: event.id, userKey, nowDate });
     const createdAt = nowIso();
@@ -811,6 +782,8 @@ export async function createManualIntent(params: {
   quantity: number;
   amountCents: number;
   ticketType: string;
+  receiverId?: string;
+  receiverPhone?: string;
   adminKey: string;
   ip: string;
 }) {
@@ -835,8 +808,8 @@ export async function createManualIntent(params: {
       ticketType: params.ticketType.trim() || "ENTRADA",
       paymentRef: generatePaymentRef(existingRefs),
       quantity,
-      receiverId: "manual",
-      receiverPhone: "",
+      receiverId: params.receiverId ?? "manual",
+      receiverPhone: params.receiverPhone?.replace(/\s+/g, "").trim() ?? "",
       amountCents: params.amountCents,
       currency: event.currency,
       status: "PAID",

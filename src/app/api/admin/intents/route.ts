@@ -42,13 +42,17 @@ export async function POST(request: NextRequest) {
       quantity?: number;
       amountCents?: number;
       ticketType?: string;
+      receiverId?: string;
+      receiverPhone?: string;
     };
     const result = await createManualIntent({
       userKey: body.userKey ?? "",
       buyerName: body.buyerName,
       quantity: body.quantity ?? 1,
       amountCents: body.amountCents ?? 0,
-      ticketType: body.ticketType ?? "ENTRADA",
+      ticketType: body.ticketType ?? "ENTRADA NORMAL",
+      receiverId: body.receiverId,
+      receiverPhone: body.receiverPhone,
       adminKey,
       ip: getClientIp(request),
     });

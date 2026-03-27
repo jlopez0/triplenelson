@@ -126,8 +126,9 @@ export default function AdminPage() {
   const [manualName, setManualName] = useState("");
   const [manualQuantity, setManualQuantity] = useState(1);
   const [manualAmount, setManualAmount] = useState("");
-  const [manualType, setManualType] = useState("ENTRADA FIELES");
+  const [manualType, setManualType] = useState("ENTRADA NORMAL");
   const [manualCustomType, setManualCustomType] = useState("");
+  const [manualReceiverId, setManualReceiverId] = useState("");
   const [savingManual, setSavingManual] = useState(false);
 
   function buildAuthHeader(u: string, p: string): HeadersInit {
@@ -362,6 +363,8 @@ export default function AdminPage() {
       if (isNaN(amountCents) || amountCents < 0) throw new Error("Importe inválido.");
       const ticketType = manualType === "__custom__" ? manualCustomType.trim() : manualType;
       if (!ticketType) throw new Error("Indica el tipo de entrada.");
+      const selectedReceiver = receivers.find((r) => r.id === manualReceiverId) ?? receivers[0];
+      if (!selectedReceiver) throw new Error("No hay receptores disponibles.");
       const res = await fetch("/api/admin/intents", {
         method: "POST",
         headers: { "Content-Type": "application/json", ...currentAuthHeader() },
@@ -371,14 +374,17 @@ export default function AdminPage() {
           quantity: manualQuantity,
           amountCents,
           ticketType,
+          receiverId: selectedReceiver.id,
+          receiverPhone: selectedReceiver.phone,
         }),
       });
       const payload = await res.json();
       if (!res.ok) throw new Error(payload?.message ?? "Error al crear pago.");
       const sent = payload?.emailDelivery?.sent ?? 0;
-      setMessage(`✓ Pago manual creado. ${sent > 0 ? `Email enviado (${sent} entrada${sent !== 1 ? "s" : ""}).` : "Email pendiente."}`);
+      const emailMsg = sent > 0 ? `Email enviado (${sent} entrada${sent !== 1 ? "s" : ""}).` : "Email pendiente.";
+      setMessage(`✓ Pago manual creado. ${emailMsg}`);
       setShowManualModal(false);
-      setManualEmail(""); setManualName(""); setManualQuantity(1); setManualAmount(""); setManualType("ENTRADA FIELES"); setManualCustomType("");
+      setManualEmail(""); setManualName(""); setManualQuantity(1); setManualAmount(""); setManualType("ENTRADA NORMAL"); setManualCustomType(""); setManualReceiverId("");
       await loadData();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al crear pago.");
@@ -757,7 +763,7 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Entradas</label>
-                  <input type="number" min={1} max={10} value={editFields.quantity} onChange={(e) => setEditFields((f) => ({ ...f, quantity: Math.max(1, Math.min(10, parseInt(e.target.value) || 1)) }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+                  <input type="number" min={1} max={10} value={editFields.quantity} onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) setEditFields((f) => ({ ...f, quantity: Math.max(1, Math.min(10, v)) })); }} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
                 </div>
                 <div>
                   <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Importe (€)</label>
@@ -832,7 +838,7 @@ export default function AdminPage() {
                     min={1}
                     max={10}
                     value={manualQuantity}
-                    onChange={(e) => setManualQuantity(Math.max(1, Math.min(10, parseInt(e.target.value) || 1)))}
+                    onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) setManualQuantity(Math.max(1, Math.min(10, v))); }}
                     className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
                   />
                 </div>
@@ -856,8 +862,8 @@ export default function AdminPage() {
                   onChange={(e) => setManualType(e.target.value)}
                   className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
                 >
-                  <option value="ENTRADA FIELES">ENTRADA FIELES</option>
                   <option value="ENTRADA NORMAL">ENTRADA NORMAL</option>
+                  <option value="ENTRADA FIELES">ENTRADA FIELES</option>
                   <option value="INVITACIÓN">INVITACIÓN</option>
                   <option value="__custom__">Otro (personalizado)</option>
                 </select>
@@ -875,6 +881,19 @@ export default function AdminPage() {
                   />
                 </div>
               )}
+
+              <div>
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Receptor (a quién va el Bizum) *</label>
+                <select
+                  value={manualReceiverId}
+                  onChange={(e) => setManualReceiverId(e.target.value)}
+                  className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400"
+                >
+                  {receivers.filter((r) => r.isActive).map((r) => (
+                    <option key={r.id} value={r.id}>{r.label} · {r.phone}</option>
+                  ))}
+                </select>
+              </div>
             </div>
 
             <p className="text-xs text-zinc-500">Se generarán las entradas y se enviará el email al comprador automáticamente.</p>
