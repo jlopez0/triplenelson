@@ -278,7 +278,7 @@ export default function KahootPlayerPage() {
                   const showResult = timeUp && correctIndex !== null;
 
                   // Estilo por defecto: color de la opción.
-                  let bg = ANSWER_STYLES[index];
+                  let bg: string = ANSWER_STYLES[index];
                   let ring = "";
                   let dimmed = false;
                   let badge: React.ReactNode = null;
