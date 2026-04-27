@@ -26,6 +26,8 @@ type AdminIntent = {
   paidAt?: string;
   userKey: string;
   buyerName?: string;
+  buyerPhone?: string;
+  referredBy?: string;
   ticketType?: string;
   expiresAt: string;
   knowsBilly?: boolean;
@@ -87,6 +89,8 @@ function BuyerCell({ item }: { item: AdminIntent }) {
     <td className="py-3 pr-3">
       {item.buyerName ? <div className="font-medium text-white">{item.buyerName}</div> : null}
       <div className="text-xs text-zinc-500">{item.userKey}</div>
+      {item.buyerPhone ? <div className="text-xs text-zinc-400">{item.buyerPhone}</div> : null}
+      {item.referredBy ? <div className="text-[10px] text-zinc-500">de parte de: <span className="text-zinc-300">{item.referredBy}</span></div> : null}
       {item.ticketType ? (
         <div className={`text-[10px] mt-0.5 font-semibold ${isFieles ? "text-yellow-400" : "text-purple-400"}`}>
           {isFieles ? "★ " : ""}{item.ticketType}

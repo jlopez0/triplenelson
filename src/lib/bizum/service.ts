@@ -1071,6 +1071,8 @@ export async function listAdminIntents(params: {
         userKey: intent.userKey,
         quantity: intent.quantity,
         knowsBilly: intent.knowsBilly,
+        buyerPhone: intent.buyerPhone,
+        referredBy: intent.referredBy,
       };
     });
   });

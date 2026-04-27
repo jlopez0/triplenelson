@@ -99,6 +99,7 @@ export default function AportarPage() {
   const status = intent?.status ?? intentData?.status ?? null;
   const normalizedEmail = email.trim().toLowerCase();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+  const isPhoneValid = /^(\+?34)?[6789]\d{8}$/.test(phone.trim().replace(/\s+/g, ""));
 
   useEffect(() => {
     let cancelled = false;
@@ -203,8 +204,14 @@ export default function AportarPage() {
       return;
     }
 
-    if (!phone.trim()) {
+    const normalizedPhone = phone.trim().replace(/\s+/g, "");
+    if (!normalizedPhone) {
       setError("Introduce tu número de teléfono.");
+      return;
+    }
+    const phoneRegex = /^(\+?34)?[6789]\d{8}$/;
+    if (!phoneRegex.test(normalizedPhone)) {
+      setError("Introduce un número de teléfono español válido (ej: 612 345 678).");
       return;
     }
 
@@ -227,7 +234,7 @@ export default function AportarPage() {
           eventId: eventInfo?.id,
           userKey: normalizedUserKey,
           buyerName: name.trim(),
-          buyerPhone: phone.trim(),
+          buyerPhone: normalizedPhone,
           referredBy: referredBy.trim(),
           quantity,
           knowsBilly,
@@ -330,11 +337,14 @@ export default function AportarPage() {
               <input
                 value={phone}
                 onChange={(event) => setPhone(event.target.value)}
-                placeholder="Tu número de teléfono"
+                placeholder="612 345 678"
                 type="tel"
                 required
                 className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
               />
+              {phone.length > 0 && !/^(\+?34)?[6789]\d{8}$/.test(phone.trim().replace(/\s+/g, "")) ? (
+                <p className="text-xs text-rose-300">Introduce un teléfono español válido (ej: 612 345 678).</p>
+              ) : null}
               <label className="block text-xs uppercase tracking-widest text-zinc-500">¿De parte de quién vienes?</label>
               <input
                 value={referredBy}
@@ -397,7 +407,7 @@ export default function AportarPage() {
               <button
                 type="button"
                 onClick={handleCreateIntent}
-                disabled={loadingIntent || !name.trim() || !isEmailValid || !phone.trim() || !referredBy.trim() || knowsBilly === null}
+                disabled={loadingIntent || !name.trim() || !isEmailValid || !isPhoneValid || !referredBy.trim() || knowsBilly === null}
                 className="btn-primary text-xs md:text-sm py-3 md:py-4 disabled:opacity-60"
               >
                 {loadingIntent ? "Generando..." : "Generar instrucciones Bizum"}
