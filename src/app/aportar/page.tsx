@@ -84,6 +84,8 @@ export default function AportarPage() {
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [referredBy, setReferredBy] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [knowsBilly, setKnowsBilly] = useState<boolean | null>(null);
   const [intentData, setIntentData] = useState<CreateIntentResponse | null>(null);
@@ -97,6 +99,7 @@ export default function AportarPage() {
   const status = intent?.status ?? intentData?.status ?? null;
   const normalizedEmail = email.trim().toLowerCase();
   const isEmailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail);
+  const isPhoneValid = /^(\+?34)?[6789]\d{8}$/.test(phone.trim().replace(/\s+/g, ""));
 
   useEffect(() => {
     let cancelled = false;
@@ -201,6 +204,22 @@ export default function AportarPage() {
       return;
     }
 
+    const normalizedPhone = phone.trim().replace(/\s+/g, "");
+    if (!normalizedPhone) {
+      setError("Introduce tu número de teléfono.");
+      return;
+    }
+    const phoneRegex = /^(\+?34)?[6789]\d{8}$/;
+    if (!phoneRegex.test(normalizedPhone)) {
+      setError("Introduce un número de teléfono español válido (ej: 612 345 678).");
+      return;
+    }
+
+    if (!referredBy.trim()) {
+      setError("Indica de parte de quién vienes.");
+      return;
+    }
+
     if (knowsBilly === null) {
       setError("Indica si conoces a Billy.");
       return;
@@ -215,6 +234,8 @@ export default function AportarPage() {
           eventId: eventInfo?.id,
           userKey: normalizedUserKey,
           buyerName: name.trim(),
+          buyerPhone: normalizedPhone,
+          referredBy: referredBy.trim(),
           quantity,
           knowsBilly,
           ticketType: "ENTRADA NORMAL",
@@ -312,6 +333,27 @@ export default function AportarPage() {
                 pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                 className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
               />
+              <label className="block text-xs uppercase tracking-widest text-zinc-500">Teléfono</label>
+              <input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="612 345 678"
+                type="tel"
+                required
+                className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
+              />
+              {phone.length > 0 && !/^(\+?34)?[6789]\d{8}$/.test(phone.trim().replace(/\s+/g, "")) ? (
+                <p className="text-xs text-rose-300">Introduce un teléfono español válido (ej: 612 345 678).</p>
+              ) : null}
+              <label className="block text-xs uppercase tracking-widest text-zinc-500">¿De parte de quién vienes?</label>
+              <input
+                value={referredBy}
+                onChange={(event) => setReferredBy(event.target.value)}
+                placeholder="Nombre de quien te ha invitado"
+                type="text"
+                required
+                className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
+              />
               <label className="block text-xs uppercase tracking-widest text-zinc-500">Numero de entradas</label>
               <div className="flex items-center gap-3">
                 <button
@@ -365,7 +407,7 @@ export default function AportarPage() {
               <button
                 type="button"
                 onClick={handleCreateIntent}
-                disabled={loadingIntent || !name.trim() || !isEmailValid || knowsBilly === null}
+                disabled={loadingIntent || !name.trim() || !isEmailValid || !isPhoneValid || !referredBy.trim() || knowsBilly === null}
                 className="btn-primary text-xs md:text-sm py-3 md:py-4 disabled:opacity-60"
               >
                 {loadingIntent ? "Generando..." : "Generar instrucciones Bizum"}

@@ -6,11 +6,13 @@ export const runtime = "nodejs";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json()) as { eventId?: string; userKey?: string; buyerName?: string; ticketType?: string; quantity?: number; knowsBilly?: boolean };
+    const body = (await request.json()) as { eventId?: string; userKey?: string; buyerName?: string; buyerPhone?: string; referredBy?: string; ticketType?: string; quantity?: number; knowsBilly?: boolean };
     const result = await createOrReuseIntent({
       eventId: body.eventId,
       userKey: body.userKey ?? "",
       buyerName: body.buyerName,
+      buyerPhone: body.buyerPhone,
+      referredBy: body.referredBy,
       ticketType: body.ticketType,
       quantity: body.quantity,
       knowsBilly: body.knowsBilly,

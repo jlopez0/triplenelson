@@ -28,3 +28,11 @@ ts-debug.log*
 
 # Vercel
 .vercel
+
+# Env files adicionales
+.env.production
+
+# Google Cloud SDK
+google-cloud-sdk/
+google-cloud-cli-*.tar.gz
+cors.json

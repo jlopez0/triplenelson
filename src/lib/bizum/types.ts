@@ -47,6 +47,8 @@ export interface PaymentIntent {
   qrPayloads?: string[];
   ticketsEmailedAt?: string;
   buyerName?: string;
+  buyerPhone?: string;
+  referredBy?: string;
   ticketType?: string;
   knowsBilly?: boolean;
   validationToken?: string;
