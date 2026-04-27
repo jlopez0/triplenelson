@@ -5,19 +5,39 @@ import Link from 'next/link';
 export default function LineupPage() {
   const artists = [
     {
-      name: 'DJ NELSON B2B DJ LOMAS',
-      time: '22:00 - 00:00',
-      style: 'Ya veremos'
+      name: 'DJ LOMAS',
+      time: '19:00 - 21:00',
+      style: ''
     },
     {
-      name: 'YANN',
-      time: '00:00 - 02:00',
-      style: 'Trance / Psytrance'
+      name: 'TBD',
+      time: '',
+      style: ''
     },
     {
-      name: 'DJ TRUJINI LOQUINI',
-      time: '02:00 - 04:00',
-      style: 'Hard Techno'
+      name: 'DASFUNK',
+      time: '23:30 - 1:00',
+      style: ''
+    },
+    {
+      name: 'DJ NELSON b2b JEANQUIROGA',
+      time: '1:00 - 2:30',
+      style: ''
+    },
+    {
+      name: 'ANTEKA',
+      time: '2:30 - 3:45',
+      style: ''
+    },
+    {
+      name: 'MEXE',
+      time: '3:45 - 5:00',
+      style: ''
+    },
+    {
+      name: 'LATIGO',
+      time: '5:00 - 6:15',
+      style: ''
     }
   ];
 
@@ -49,7 +69,7 @@ export default function LineupPage() {
           </h1>
           <div className="h-px bg-gradient-to-r from-zinc-700 via-zinc-500 to-transparent max-w-md" />
           <p className="text-sm md:text-base text-zinc-500 mt-3 md:mt-4">
-            20 Junio 2026 · 3 Artistas confirmados · Resto por definir
+            20 Junio 2026 · 7 Artistas confirmados
           </p>
         </div>
 

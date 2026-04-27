@@ -84,6 +84,8 @@ export default function AportarPage() {
 
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [referredBy, setReferredBy] = useState("");
   const [quantity, setQuantity] = useState(1);
   const [knowsBilly, setKnowsBilly] = useState<boolean | null>(null);
   const [intentData, setIntentData] = useState<CreateIntentResponse | null>(null);
@@ -201,6 +203,16 @@ export default function AportarPage() {
       return;
     }
 
+    if (!phone.trim()) {
+      setError("Introduce tu número de teléfono.");
+      return;
+    }
+
+    if (!referredBy.trim()) {
+      setError("Indica de parte de quién vienes.");
+      return;
+    }
+
     if (knowsBilly === null) {
       setError("Indica si conoces a Billy.");
       return;
@@ -215,6 +227,8 @@ export default function AportarPage() {
           eventId: eventInfo?.id,
           userKey: normalizedUserKey,
           buyerName: name.trim(),
+          buyerPhone: phone.trim(),
+          referredBy: referredBy.trim(),
           quantity,
           knowsBilly,
           ticketType: "ENTRADA NORMAL",
@@ -312,6 +326,24 @@ export default function AportarPage() {
                 pattern="^[^\s@]+@[^\s@]+\.[^\s@]+$"
                 className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
               />
+              <label className="block text-xs uppercase tracking-widest text-zinc-500">Teléfono</label>
+              <input
+                value={phone}
+                onChange={(event) => setPhone(event.target.value)}
+                placeholder="Tu número de teléfono"
+                type="tel"
+                required
+                className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
+              />
+              <label className="block text-xs uppercase tracking-widest text-zinc-500">¿De parte de quién vienes?</label>
+              <input
+                value={referredBy}
+                onChange={(event) => setReferredBy(event.target.value)}
+                placeholder="Nombre de quien te ha invitado"
+                type="text"
+                required
+                className="w-full rounded-xl border border-zinc-700 bg-black/40 px-4 py-3 text-sm md:text-base outline-none focus:border-zinc-400"
+              />
               <label className="block text-xs uppercase tracking-widest text-zinc-500">Numero de entradas</label>
               <div className="flex items-center gap-3">
                 <button
@@ -365,7 +397,7 @@ export default function AportarPage() {
               <button
                 type="button"
                 onClick={handleCreateIntent}
-                disabled={loadingIntent || !name.trim() || !isEmailValid || knowsBilly === null}
+                disabled={loadingIntent || !name.trim() || !isEmailValid || !phone.trim() || !referredBy.trim() || knowsBilly === null}
                 className="btn-primary text-xs md:text-sm py-3 md:py-4 disabled:opacity-60"
               >
                 {loadingIntent ? "Generando..." : "Generar instrucciones Bizum"}

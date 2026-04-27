@@ -2,15 +2,29 @@ import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { HomeCountdown } from '@/components/features/HomeCountdown';
 import { getTimeLeft } from '@/lib/countdown';
+import { getAdminApp } from '@/lib/kahoot/firebase-admin';
 
 const UfoAnimation = dynamic(() => import('@/components/UfoAnimation').then(m => ({ default: m.UfoAnimation })), {
   ssr: false,
 });
 
-const TARGET_TIMESTAMP = new Date('2026-06-20T23:59:59').getTime();
+export const revalidate = 0;
 
-export default function HomePage() {
+const TARGET_TIMESTAMP = new Date('2026-06-20T23:59:59').getTime();
+const ENV = process.env.NEXT_PUBLIC_FIREBASE_ENV ?? 'dev';
+
+async function getActiveKahootGame(): Promise<string | null> {
+  try {
+    const snap = await getAdminApp().ref(`${ENV}/activeGame`).get();
+    return snap.exists() ? (snap.val() as string) : null;
+  } catch {
+    return null;
+  }
+}
+
+export default async function HomePage() {
   const initialTimeLeft = getTimeLeft(TARGET_TIMESTAMP);
+  const activeGameId = await getActiveKahootGame();
 
   return (
     <div className="min-h-screen bg-techno flex flex-col">
@@ -55,6 +69,11 @@ export default function HomePage() {
               <Link href="/aportar" className="btn-primary text-xs md:text-sm py-3 md:py-4 text-center">
                 Conseguir Entrada
               </Link>
+              {activeGameId ? (
+                <Link href={`/kahoot/${activeGameId}`} className="btn-secondary text-xs md:text-sm py-3 md:py-4 text-center">
+                  Entrar a Partida
+                </Link>
+              ) : null}
               <Link href="/lineup" className="btn-secondary text-xs md:text-sm py-3 md:py-4 text-center">
                 Ver Line-up
               </Link>

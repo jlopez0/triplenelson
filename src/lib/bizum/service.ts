@@ -407,6 +407,8 @@ export async function createOrReuseIntent(params: {
   eventId?: string;
   userKey: string;
   buyerName?: string;
+  buyerPhone?: string;
+  referredBy?: string;
   ticketType?: string;
   quantity?: number;
   knowsBilly?: boolean;
@@ -449,6 +451,8 @@ export async function createOrReuseIntent(params: {
       eventId: event.id,
       userKey,
       buyerName: params.buyerName?.trim() || undefined,
+      buyerPhone: params.buyerPhone?.trim() || undefined,
+      referredBy: params.referredBy?.trim() || undefined,
       ticketType,
       paymentRef: generatePaymentRef(existingRefs),
       quantity,

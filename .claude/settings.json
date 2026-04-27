@@ -43,7 +43,19 @@
       "Bash(powershell.exe -Command \"Set-Location ''C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson''; npm run build 2>&1\")",
       "Read(//c//**)",
       "Bash(npx tsc:*)",
-      "Read(//mnt/c/Users/javie/**)"
+      "Read(//mnt/c/Users/javie/**)",
+      "Bash(where npm.cmd)",
+      "Read(//c/Program Files \\(x86\\)/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"http://localhost:3003/api/admin/receivers\" -H \"x-admin-token: $\\(grep BIZUM_ADMIN_TOKEN .env.local)",
+      "Bash(gsutil version *)",
+      "Bash(gcloud version *)",
+      "Bash(winget install *)",
+      "PowerShell(winget install Google.CloudSDK --accept-source-agreements --accept-package-agreements 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\" auth activate-service-account --key-file=\"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Temp\\\\sa.json\" 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gsutil.cmd\" -o \"GSUtil:default_project_id=triplenelson-7e9f3\" ls 2>&1)",
+      "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gsutil.cmd\" -o \"GSUtil:default_project_id=triplenelson-7e9f3\" cors set \"C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson\\\\cors.json\" gs://triplenelson-7e9f3.firebasestorage.app 2>&1)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue; \\(Get-Command node.exe -ErrorAction SilentlyContinue\\).Source)",
+      "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\" version 2>&1)"
     ]
   }
 }

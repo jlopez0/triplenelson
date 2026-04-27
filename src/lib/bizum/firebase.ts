@@ -1,5 +1,7 @@
-import { getApps, getApp, initializeApp, cert } from "firebase-admin/app";
+import { getApps, initializeApp, cert } from "firebase-admin/app";
 import { getFirestore, type Firestore } from "firebase-admin/firestore";
+
+const APP_NAME = "kahoot";
 
 let _db: Firestore | undefined;
 
@@ -18,9 +20,11 @@ function initFirestore(): Firestore {
     );
   }
 
-  const app = getApps().length
-    ? getApp()
-    : initializeApp({ credential: cert({ projectId, clientEmail, privateKey }) });
+  const existing = getApps().find((a) => a.name === APP_NAME);
+  const app = existing ?? initializeApp(
+    { credential: cert({ projectId, clientEmail, privateKey }) },
+    APP_NAME,
+  );
 
   const db = getFirestore(app);
 

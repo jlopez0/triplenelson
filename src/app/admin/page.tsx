@@ -492,6 +492,9 @@ export default function AdminPage() {
             {loading && <span className="ml-2 text-xs text-zinc-500 font-sans">Cargando...</span>}
           </h1>
           <div className="flex items-center gap-2">
+            <Link href="/kahoot/admin" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
+              Kahoot
+            </Link>
             <button type="button" onClick={() => setShowManualModal(true)} className="btn-primary text-[11px] md:text-xs px-3 py-2">
               + Pago
             </button>
