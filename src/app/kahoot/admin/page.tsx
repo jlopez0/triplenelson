@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { uploadQuizQuestionImage } from "@/lib/kahoot/storage-client";
@@ -120,6 +120,7 @@ export default function KahootAdminPage() {
   const [answers, setAnswers] = useState<Record<string, GameAnswer>>({});
   const [correctIndex, setCorrectIndex] = useState<number | null>(null);
   const [busyAction, setBusyAction] = useState("");
+  const inFlightRef = useRef<Set<string>>(new Set());
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [activeGameId, setActiveGameId] = useState<string | null>(null);
@@ -170,16 +171,17 @@ export default function KahootAdminPage() {
   useEffect(() => {
     if (!gameId) {
       setGame(null);
+      return;
+    }
+    return subscribeGame(gameId, setGame);
+  }, [gameId]);
+
+  useEffect(() => {
+    if (!gameId) {
       setPlayers({});
       return;
     }
-
-    const offGame = subscribeGame(gameId, setGame);
-    const offPlayers = subscribePlayers(gameId, setPlayers);
-    return () => {
-      offGame();
-      offPlayers();
-    };
+    return subscribePlayers(gameId, setPlayers);
   }, [gameId]);
 
   useEffect(() => {
@@ -205,6 +207,32 @@ export default function KahootAdminPage() {
     if (!gameId) return;
     return subscribeCorrectIndex(gameId, setCorrectIndex);
   }, [gameId]);
+
+  // Auto-reveal when timer expires
+  useEffect(() => {
+    if (
+      !gameId ||
+      !game ||
+      game.status !== "question" ||
+      !game.currentQuestion ||
+      correctIndex != null
+    ) return;
+
+    const { startedAt, timeLimit } = game.currentQuestion;
+    const expiresAt = startedAt + timeLimit * 1000;
+    const delay = expiresAt - Date.now();
+
+    if (delay <= 0) {
+      void revealOnServer(gameId, token).catch(() => {});
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      void revealOnServer(gameId, token).catch(() => {});
+    }, delay);
+
+    return () => clearTimeout(timer);
+  }, [gameId, game?.status, game?.currentQuestionIndex, game?.currentQuestion?.startedAt, correctIndex, token]);
 
   async function validateToken(value = tokenInput) {
     setAuthLoading(true);
@@ -389,6 +417,8 @@ export default function KahootAdminPage() {
 
   async function startGame() {
     if (!selectedQuiz) return;
+    if (inFlightRef.current.has("create")) return;
+    inFlightRef.current.add("create");
     setBusyAction("create");
     setError("");
     setMessage("");
@@ -399,6 +429,7 @@ export default function KahootAdminPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo crear la partida.");
     } finally {
+      inFlightRef.current.delete("create");
       setBusyAction("");
     }
   }

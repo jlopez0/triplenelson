@@ -1,141 +1,109 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 
-export default function LineupPage() {
-  const artists = [
-    {
-      name: 'DJ LOMAS',
-      time: '19:00 - 21:00',
-      style: ''
-    },
-    {
-      name: 'TBD',
-      time: '',
-      style: ''
-    },
-    {
-      name: 'DASFUNK',
-      time: '23:30 - 1:00',
-      style: ''
-    },
-    {
-      name: 'DJ NELSON b2b JEANQUIROGA',
-      time: '1:00 - 2:30',
-      style: ''
-    },
-    {
-      name: 'ANTEKA',
-      time: '2:30 - 3:45',
-      style: ''
-    },
-    {
-      name: 'MEXE',
-      time: '3:45 - 5:00',
-      style: ''
-    },
-    {
-      name: 'LATIGO',
-      time: '5:00 - 6:15',
-      style: ''
-    }
-  ];
+const ARTISTS = [
+  { name: 'DJ LOMAS',                  start: '19:00', end: '21:00' },
+  { name: 'DJ ALIA',                   start: '21:00', end: '23:30' },
+  { name: 'DASFUNK',                   start: '23:30', end: '01:00' },
+  { name: 'DJ NELSON b2b JEANQUIROGA', start: '01:00', end: '02:30', highlight: true },
+  { name: 'ANTEKA',                    start: '02:30', end: '03:45' },
+  { name: 'MEXE',                      start: '03:45', end: '05:00' },
+  { name: 'LATIGO',                    start: '05:00', end: '06:15' },
+];
 
+export default function LineupPage() {
   return (
     <div className="min-h-screen bg-techno">
-      {/* Header */}
-      <header className="border-b border-zinc-800 bg-black/40 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container-pro py-4 md:py-5">
-          <div className="flex items-center justify-between">
-            <Link href="/" className="text-xl md:text-2xl font-display font-bold tracking-tighter hover:text-zinc-300 transition-colors">
-              TRIPLE NELSON
-            </Link>
-            <Link href="/" className="text-xs md:text-sm text-zinc-500 hover:text-white transition-colors uppercase tracking-wider">
-              Volver
-            </Link>
-          </div>
+      <header className="sticky top-0 z-50 border-b border-zinc-800 bg-black/70 backdrop-blur-md">
+        <div className="container-pro flex items-center justify-between py-4">
+          <Link href="/" className="font-display text-lg font-bold tracking-tighter transition-colors hover:text-zinc-300">
+            TRIPLE NELSON
+          </Link>
+          <Link href="/" className="text-xs uppercase tracking-widest text-zinc-500 transition-colors hover:text-white">
+            Volver
+          </Link>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="container-pro py-8 md:py-12 lg:py-16">
-        {/* Title Section */}
-        <div className="mb-8 md:mb-12">
-          <h1 className="font-display font-bold text-4xl md:text-6xl lg:text-7xl tracking-tighter mb-3 md:mb-4">
-            LINE-UP
-            <span className="block text-transparent bg-clip-text bg-gradient-to-r from-zinc-200 to-zinc-500">
-              2026
-            </span>
-          </h1>
-          <div className="h-px bg-gradient-to-r from-zinc-700 via-zinc-500 to-transparent max-w-md" />
-          <p className="text-sm md:text-base text-zinc-500 mt-3 md:mt-4">
-            20 Junio 2026 · 7 Artistas confirmados
-          </p>
+      <main className="container-pro pb-20 pt-10">
+        {/* Cabecera */}
+        <div className="mb-12">
+          <p className="text-[11px] uppercase tracking-[0.36em] text-zinc-500">20 Junio 2026</p>
+          <h1 className="mt-2 font-display text-6xl font-bold tracking-tighter">LINE-UP</h1>
+          <div className="mt-3 h-px max-w-[160px] bg-gradient-to-r from-zinc-500 to-transparent" />
+          <p className="mt-4 text-sm text-zinc-600">{ARTISTS.length} artistas</p>
         </div>
 
-        {/* Artists Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-          {artists.map((artist, index) => (
-            <div
-              key={index}
-              className="group card hover:border-zinc-600 hover:scale-[1.02] transition-all duration-300 cursor-pointer"
-            >
-              {/* Artist Number */}
-              <div className="flex items-start justify-between mb-4 md:mb-6">
-                <span className="text-5xl md:text-6xl font-display font-bold text-zinc-800 group-hover:text-zinc-700 transition-colors">
-                  {String(index + 1).padStart(2, '0')}
+        {/* Timeline */}
+        <div className="relative">
+          {/* Línea vertical */}
+          <div className="absolute bottom-0 left-[52px] top-0 w-px bg-gradient-to-b from-zinc-700 via-zinc-800 to-transparent" />
+
+          <ol className="flex flex-col">
+            {ARTISTS.map((artist, i) => {
+              const isLast = i === ARTISTS.length - 1;
+              return (
+                <li
+                  key={i}
+                  className={`group relative flex items-start gap-0 ${isLast ? '' : 'pb-9'}`}
+                >
+                  {/* Hora */}
+                  <div className="w-[52px] shrink-0 pt-[14px] text-right pr-4">
+                    <span className={`font-mono text-[13px] tabular-nums transition-colors ${
+                      artist.highlight
+                        ? 'font-bold text-zinc-200 group-hover:text-white'
+                        : 'text-zinc-500 group-hover:text-zinc-300'
+                    }`}>
+                      {artist.start}
+                    </span>
+                  </div>
+
+                  {/* Dot */}
+                  <div className="relative shrink-0 pt-[18px]">
+                    <div className={`h-2.5 w-2.5 rounded-full border transition-all duration-300 ${
+                      artist.highlight
+                        ? 'border-zinc-400 bg-zinc-800 group-hover:border-white group-hover:bg-white group-hover:shadow-[0_0_16px_rgba(255,255,255,0.6)]'
+                        : 'border-zinc-700 bg-zinc-900 group-hover:border-zinc-400 group-hover:bg-zinc-700'
+                    }`} />
+                  </div>
+
+                  {/* Contenido */}
+                  <div className="ml-5 flex-1 pt-2">
+                    <h2 className={`font-display font-bold leading-tight tracking-tight transition-colors duration-200 ${
+                      artist.highlight
+                        ? 'text-3xl text-zinc-100 group-hover:text-white sm:text-4xl'
+                        : 'text-2xl text-zinc-300 group-hover:text-white sm:text-3xl'
+                    }`}>
+                      {artist.name}
+                    </h2>
+
+                    {artist.highlight && (
+                      <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-400 transition-all duration-300 group-hover:border-white/30 group-hover:bg-white/10 group-hover:text-white">
+                        <span className="h-1 w-1 animate-pulse rounded-full bg-zinc-400 group-hover:bg-white" />
+                        Headliner
+                      </span>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+
+            {/* Hora de cierre */}
+            <li className="relative flex items-center gap-0">
+              <div className="w-[52px] shrink-0 pr-4 text-right">
+                <span className="font-mono text-[13px] tabular-nums text-zinc-700">
+                  {ARTISTS[ARTISTS.length - 1].end}
                 </span>
-                <div className="text-right">
-                  <div className="text-xs uppercase tracking-wider text-zinc-600 mb-1">Horario</div>
-                  <div className="text-sm md:text-base font-medium text-zinc-400">{artist.time}</div>
-                </div>
               </div>
-
-              {/* Artist Name */}
-              <h2 className="font-display font-bold text-2xl md:text-3xl tracking-tight mb-3 md:mb-4 leading-tight">
-                {artist.name}
-              </h2>
-
-              {/* Style */}
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full" />
-                <span className="text-xs md:text-sm text-zinc-500 uppercase tracking-wider">
-                  {artist.style}
-                </span>
-              </div>
-            </div>
-          ))}
-
-          <div className="card border-dashed border-zinc-700/80 bg-zinc-950/30">
-            <div className="flex items-start justify-between mb-4 md:mb-6">
-              <span className="text-5xl md:text-6xl font-display font-bold text-zinc-800">??</span>
-              <div className="text-right">
-                <div className="text-xs uppercase tracking-wider text-zinc-600 mb-1">Horario</div>
-                <div className="text-sm md:text-base font-medium text-zinc-500">Por definir</div>
-              </div>
-            </div>
-
-            <h2 className="font-display font-bold text-2xl md:text-3xl tracking-tight mb-3 md:mb-4 leading-tight text-zinc-300">
-              Proximos artistas
-            </h2>
-
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 bg-amber-500 rounded-full" />
-              <span className="text-xs md:text-sm text-zinc-500 uppercase tracking-wider">
-                Anuncio pendiente
-              </span>
-            </div>
-          </div>
+              <div className="h-2 w-2 shrink-0 rounded-full border border-zinc-800 bg-zinc-950" />
+            </li>
+          </ol>
         </div>
 
-        {/* Info Footer */}
-        <div className="mt-12 md:mt-16 text-center">
-          <div className="inline-block card max-w-2xl">
-            <p className="text-sm md:text-base text-zinc-400 leading-relaxed">
-              El horario puede sufrir modificaciones. Mantente atento a nuestras redes sociales para actualizaciones en tiempo real del evento.
-            </p>
-          </div>
-        </div>
+        <p className="mt-16 text-xs text-zinc-700">
+          El horario puede sufrir modificaciones.
+        </p>
       </main>
     </div>
   );

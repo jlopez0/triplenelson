@@ -93,12 +93,16 @@ function normalizeDb(candidate: Partial<BizumDb> | null | undefined): BizumDb {
     events: Array.isArray(candidate.events) && candidate.events.length > 0 ? candidate.events : seed.events,
     receivers:
       Array.isArray(candidate.receivers) && candidate.receivers.length > 0
-        ? candidate.receivers.map((receiver, index) => ({
-            ...receiver,
-            label: DEFAULT_RECEIVER_LABELS[index] || receiver.label,
-            phone: normalizePhone(DEFAULT_RECEIVERS[index]) || receiver.phone,
-            email: DEFAULT_RECEIVER_EMAILS[index] || receiver.email || undefined,
-          }))
+        ? seed.receivers.map((seedReceiver, index) => {
+            const stored = candidate.receivers![index];
+            if (!stored) return seedReceiver; // receptor nuevo en env vars, no está en DB aún
+            return {
+              ...stored,
+              label: DEFAULT_RECEIVER_LABELS[index] || stored.label,
+              phone: normalizePhone(DEFAULT_RECEIVERS[index]) || stored.phone,
+              email: DEFAULT_RECEIVER_EMAILS[index] || stored.email || undefined,
+            };
+          })
         : seed.receivers,
     payment_intents: Array.isArray(candidate.payment_intents)
       ? candidate.payment_intents.map((intent) => {

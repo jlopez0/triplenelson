@@ -1,9 +1,25 @@
 "use client";
 
+/**
+ * PATRONES DE CONCURRENCIA — leer antes de modificar.
+ *
+ * 1. Cambios de status (lobby → question, etc.) usan `runTransaction` para evitar
+ *    race conditions entre dobles clicks o múltiples admins. NUNCA usar `set()` o
+ *    `update()` para transiciones de status sin transacción.
+ *
+ * 2. Creación de gameId: `runTransaction` sobre el path completo del juego —
+ *    si dos clicks generan el mismo gameId aleatorio, solo uno gana.
+ *
+ * 3. Generación de playerId: `crypto.randomUUID()` (NO `push().key`, NO `Math.random()`).
+ *    Esto garantiza unicidad sin depender de timestamps del servidor.
+ *
+ * 4. Listeners en el cliente: cada listener en su propio useEffect, con cleanup
+ *    en el return. Nunca acoplar dos listeners distintos en el mismo useEffect.
+ */
+
 import {
   get,
   onValue,
-  push,
   ref,
   runTransaction,
   serverTimestamp,
@@ -114,24 +130,24 @@ export async function createGame(
   totalQuestions = 0,
 ): Promise<string> {
   const db = getRtdb();
-  let gameId = randomGameId();
 
+  // Reintentar con IDs distintos hasta que la transacción committee uno único.
   for (let i = 0; i < 8; i += 1) {
+    const gameId = randomGameId();
     const gameRef = ref(db, gp(`games/${gameId}`));
-    const snap = await get(gameRef);
-    if (!snap.exists()) {
-      const initial: GameState = {
-        quizId,
-        status: "lobby",
-        currentQuestionIndex: -1,
-        totalQuestions,
-        currentQuestion: null,
-        createdAt: Date.now(),
-      };
-      await set(gameRef, initial);
-      return gameId;
-    }
-    gameId = randomGameId();
+    const initial: GameState = {
+      quizId,
+      status: "lobby",
+      currentQuestionIndex: -1,
+      totalQuestions,
+      currentQuestion: null,
+      createdAt: Date.now(),
+    };
+    const result = await runTransaction(gameRef, (current) => {
+      if (current !== null) return; // ya existe — abortar
+      return initial;
+    });
+    if (result.committed) return gameId;
   }
 
   throw new Error("No se pudo crear una partida única.");
@@ -144,16 +160,18 @@ export async function joinGame(
   const name = playerName.trim().slice(0, 20);
   if (!name) throw new Error("Nickname vacío");
 
-  const playersRef = ref(getRtdb(), gp(`games/${gameId}/players`));
-  const newRef = push(playersRef);
-  const playerId = newRef.key!;
+  // playerId con crypto.randomUUID: unicidad garantizada sin colisiones.
+  const playerId = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+    ? crypto.randomUUID()
+    : `p_${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+  const playerRef = ref(getRtdb(), gp(`games/${gameId}/players/${playerId}`));
   const payload: GamePlayer = {
     name,
     score: 0,
     answered: false,
     joinedAt: Date.now(),
   };
-  await set(newRef, payload);
+  await set(playerRef, payload);
   return playerId;
 }
 
@@ -188,24 +206,40 @@ export async function advanceQuestion(
   question: QuizQuestion,
 ): Promise<void> {
   await resetPlayersForQuestion(gameId);
-  await update(ref(getRtdb(), gp(`games/${gameId}`)), {
-    status: "question",
-    currentQuestionIndex: questionIndex,
-    currentQuestion: toActiveQuestion(question),
+  const gameRef = ref(getRtdb(), gp(`games/${gameId}`));
+  await runTransaction(gameRef, (current: GameState | null) => {
+    if (!current) return current;
+    // Idempotente: si ya estamos en esta pregunta, no reescribir startedAt.
+    if (
+      current.status === "question" &&
+      current.currentQuestionIndex === questionIndex
+    ) {
+      return current;
+    }
+    return {
+      ...current,
+      status: "question",
+      currentQuestionIndex: questionIndex,
+      currentQuestion: toActiveQuestion(question),
+    };
   });
 }
 
 export async function showLeaderboard(gameId: string): Promise<void> {
-  await update(ref(getRtdb(), gp(`games/${gameId}`)), {
-    status: "leaderboard",
-    currentQuestion: null,
+  const gameRef = ref(getRtdb(), gp(`games/${gameId}`));
+  await runTransaction(gameRef, (current: GameState | null) => {
+    if (!current) return current;
+    if (current.status === "leaderboard") return current;
+    return { ...current, status: "leaderboard", currentQuestion: null };
   });
 }
 
 export async function finishGame(gameId: string): Promise<void> {
-  await update(ref(getRtdb(), gp(`games/${gameId}`)), {
-    status: "finished",
-    currentQuestion: null,
+  const gameRef = ref(getRtdb(), gp(`games/${gameId}`));
+  await runTransaction(gameRef, (current: GameState | null) => {
+    if (!current) return current;
+    if (current.status === "finished") return current;
+    return { ...current, status: "finished", currentQuestion: null };
   });
 }
 

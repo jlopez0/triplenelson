@@ -22,9 +22,21 @@ async function getActiveKahootGame(): Promise<string | null> {
   }
 }
 
+async function getActiveRouletteSession(): Promise<string | null> {
+  try {
+    const snap = await getAdminApp().ref(`${ENV}/activeRouletteSession`).get();
+    return snap.exists() ? (snap.val() as string) : null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function HomePage() {
   const initialTimeLeft = getTimeLeft(TARGET_TIMESTAMP);
-  const activeGameId = await getActiveKahootGame();
+  const [activeGameId, activeSessionId] = await Promise.all([
+    getActiveKahootGame(),
+    getActiveRouletteSession(),
+  ]);
 
   return (
     <div className="min-h-screen bg-techno flex flex-col">
@@ -72,6 +84,11 @@ export default async function HomePage() {
               {activeGameId ? (
                 <Link href={`/kahoot/${activeGameId}`} className="btn-secondary text-xs md:text-sm py-3 md:py-4 text-center">
                   Entrar a Partida
+                </Link>
+              ) : null}
+              {activeSessionId ? (
+                <Link href={`/ruleta/${activeSessionId}`} className="btn-secondary text-xs md:text-sm py-3 md:py-4 text-center">
+                  🎰 Jugar Ruleta
                 </Link>
               ) : null}
               <Link href="/lineup" className="btn-secondary text-xs md:text-sm py-3 md:py-4 text-center">

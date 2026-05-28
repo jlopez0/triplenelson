@@ -77,14 +77,8 @@ export default function KahootPlayerPage() {
     if (stored) setPlayerId(stored);
   }, [storageKey]);
 
-  useEffect(() => {
-    const offGame = subscribeGame(gameId, setGame);
-    const offPlayers = subscribePlayers(gameId, setPlayers);
-    return () => {
-      offGame();
-      offPlayers();
-    };
-  }, [gameId]);
+  useEffect(() => subscribeGame(gameId, setGame), [gameId]);
+  useEffect(() => subscribePlayers(gameId, setPlayers), [gameId]);
 
   useEffect(() => {
     if (!playerId) {
