@@ -31,6 +31,7 @@ type AdminIntent = {
   ticketType?: string;
   expiresAt: string;
   knowsBilly?: boolean;
+  ticketsEmailedAt?: string;
 };
 
 const COOKIE_NAME = "tn_admin_auth";
@@ -75,11 +76,18 @@ const STATUS_CLASSES: Record<AdminIntent["status"], string> = {
   EXPIRED: "text-zinc-400 border-zinc-600/40 bg-zinc-600/10",
 };
 
-function StatusBadge({ status }: { status: AdminIntent["status"] }) {
+function StatusBadge({ status, ticketsEmailedAt }: { status: AdminIntent["status"]; ticketsEmailedAt?: string }) {
   return (
-    <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest ${STATUS_CLASSES[status]}`}>
-      {STATUS_LABELS[status]}
-    </span>
+    <div className="flex flex-col gap-0.5">
+      <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-widest ${STATUS_CLASSES[status]}`}>
+        {STATUS_LABELS[status]}
+      </span>
+      {status === "PAID" && (
+        ticketsEmailedAt
+          ? <span className="inline-flex rounded-full border border-emerald-500/40 bg-emerald-500/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-emerald-300">✉ Enviadas</span>
+          : <span className="inline-flex rounded-full border border-rose-500/40 bg-rose-500/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-rose-300">✉ Sin enviar</span>
+      )}
+    </div>
   );
 }
 
@@ -499,6 +507,9 @@ export default function AdminPage() {
             <Link href="/kahoot/admin" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
               Kahoot
             </Link>
+            <Link href="/ruleta/admin" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
+              Ruleta
+            </Link>
             <button type="button" onClick={() => setShowManualModal(true)} className="btn-primary text-[11px] md:text-xs px-3 py-2">
               + Pago
             </button>
@@ -681,13 +692,14 @@ export default function AdminPage() {
                       <th className="text-left py-2 pr-3">Creado</th>
                       <th className="text-left py-2 pr-3">Confirmó</th>
                       <th className="text-left py-2 pr-3">Pagado</th>
+                      <th className="text-left py-2 pr-3">Email</th>
                       <th className="text-left py-2 pr-3">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
                     {allIntents.map((item) => (
                       <tr key={item.id} className="border-b border-zinc-900 hover:bg-zinc-900/30">
-                        <td className="py-3 pr-3"><StatusBadge status={item.status} /></td>
+                        <td className="py-3 pr-3"><StatusBadge status={item.status} ticketsEmailedAt={item.ticketsEmailedAt} /></td>
                         <td className="py-3 pr-3 font-mono font-bold text-zinc-200">{item.paymentRef}</td>
                         <BuyerCell item={item} />
                         <td className="py-3 pr-3 font-bold">{item.quantity}</td>
@@ -700,6 +712,13 @@ export default function AdminPage() {
                         <td className="py-3 pr-3 text-xs text-zinc-400">{formatDate(item.createdAt)}</td>
                         <td className="py-3 pr-3 text-xs text-zinc-400">{formatDate(item.confirmedAt)}</td>
                         <td className="py-3 pr-3 text-xs text-zinc-400">{formatDate(item.paidAt)}</td>
+                        <td className="py-3 pr-3 text-xs">
+                          {item.status === "PAID"
+                            ? item.ticketsEmailedAt
+                              ? <span className="text-emerald-400" title={new Date(item.ticketsEmailedAt).toLocaleString("es-ES")}>✓ {formatDate(item.ticketsEmailedAt)}</span>
+                              : <span className="text-rose-400">✗ No enviado</span>
+                            : <span className="text-zinc-600">—</span>}
+                        </td>
                         <td className="py-3 pr-3">
                           <div className="flex gap-2">
                             {(item.status === "USER_CONFIRMED" || item.status === "CREATED") && (

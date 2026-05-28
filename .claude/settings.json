@@ -55,7 +55,10 @@
       "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gsutil.cmd\" -o \"GSUtil:default_project_id=triplenelson-7e9f3\" ls 2>&1)",
       "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gsutil.cmd\" -o \"GSUtil:default_project_id=triplenelson-7e9f3\" cors set \"C:\\\\Users\\\\javie\\\\Documents\\\\AA.Proyectos\\\\triplenelson\\\\cors.json\" gs://triplenelson-7e9f3.firebasestorage.app 2>&1)",
       "PowerShell(Get-Command node -ErrorAction SilentlyContinue; \\(Get-Command node.exe -ErrorAction SilentlyContinue\\).Source)",
-      "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\" version 2>&1)"
+      "PowerShell(& \"C:\\\\Users\\\\javie\\\\AppData\\\\Local\\\\Google\\\\Cloud SDK\\\\google-cloud-sdk\\\\bin\\\\gcloud.cmd\" version 2>&1)",
+      "PowerShell(npm install react-custom-roulette 2>&1)",
+      "PowerShell(Get-Command node -ErrorAction SilentlyContinue; Get-Command npm.cmd -ErrorAction SilentlyContinue; Test-Path \"$env:APPDATA\\\\npm\\\\npm.cmd\"; Test-Path \"C:\\\\Program Files\\\\nodejs\\\\npm.cmd\")",
+      "PowerShell($env:PATH -split \";\")"
     ]
   }
 }

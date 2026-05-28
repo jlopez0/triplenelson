@@ -1073,6 +1073,7 @@ export async function listAdminIntents(params: {
         knowsBilly: intent.knowsBilly,
         buyerPhone: intent.buyerPhone,
         referredBy: intent.referredBy,
+        ticketsEmailedAt: intent.ticketsEmailedAt,
       };
     });
   });
