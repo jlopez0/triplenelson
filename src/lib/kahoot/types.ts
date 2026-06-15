@@ -57,6 +57,8 @@ export interface GameState {
   totalQuestions: number;
   currentQuestion: ActiveQuestion | null;
   createdAt: number;
+  /** URLs de imágenes de todas las preguntas, para prefetch en el cliente */
+  imageUrls?: (string | null)[];
   players?: Record<string, GamePlayer>;
   answers?: Record<string, Record<string, GameAnswer>>;
   scoredQuestions?: Record<string, { scoredAt?: number; correctIndex?: number }>;

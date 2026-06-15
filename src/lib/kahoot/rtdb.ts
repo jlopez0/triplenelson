@@ -128,6 +128,7 @@ export function subscribeAnswersForQuestion(
 export async function createGame(
   quizId: string,
   totalQuestions = 0,
+  imageUrls: (string | null)[] = [],
 ): Promise<string> {
   const db = getRtdb();
 
@@ -142,6 +143,7 @@ export async function createGame(
       totalQuestions,
       currentQuestion: null,
       createdAt: Date.now(),
+      imageUrls: imageUrls.filter(Boolean).length > 0 ? imageUrls : undefined,
     };
     const result = await runTransaction(gameRef, (current) => {
       if (current !== null) return; // ya existe — abortar

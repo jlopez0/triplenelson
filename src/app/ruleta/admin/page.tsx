@@ -93,6 +93,21 @@ export default function RouletteAdminPage() {
     return listenPlayers(sessionId, setPlayers);
   }, [sessionId]);
 
+  // Multi-admin: si otro host activó una sesión y este admin no tiene ninguna
+  // cargada, sincronizamos automáticamente para que tome el control sin pasos.
+  useEffect(() => {
+    if (isAuthed && activeSessionId && !sessionId) {
+      setSessionId(activeSessionId);
+    }
+  }, [isAuthed, activeSessionId, sessionId]);
+
+  // Refrescar la sesión activa periódicamente por si otro admin la cambia.
+  useEffect(() => {
+    if (!isAuthed) return;
+    const id = window.setInterval(() => void loadActiveSession(), 8000);
+    return () => window.clearInterval(id);
+  }, [isAuthed]);
+
   async function validateToken(value = tokenInput) {
     setAuthLoading(true);
     setLoginError("");
@@ -378,6 +393,15 @@ export default function RouletteAdminPage() {
                     {activeSessionId ? `Activa en home: ${activeSessionId}` : "Sin sesión activa en home"}
                   </span>
                 </div>
+                {activeSessionId && activeSessionId !== sessionId ? (
+                  <button
+                    type="button"
+                    onClick={() => setSessionId(activeSessionId)}
+                    className="rounded-md border border-cyan-500/60 px-3 py-2 text-xs uppercase tracking-[0.18em] text-cyan-200 hover:bg-cyan-500/10"
+                  >
+                    Controlar sesión activa
+                  </button>
+                ) : null}
                 {sessionId && sessionId !== activeSessionId ? (
                   <button
                     type="button"

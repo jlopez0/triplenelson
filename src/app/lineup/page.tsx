@@ -2,14 +2,21 @@
 
 import Link from 'next/link';
 
-const ARTISTS = [
-  { name: 'DJ LOMAS',                  start: '19:00', end: '21:00' },
-  { name: 'DJ ALIA',                   start: '21:00', end: '23:30' },
-  { name: 'DASFUNK',                   start: '23:30', end: '01:00' },
-  { name: 'DJ NELSON b2b JEANQUIROGA', start: '01:00', end: '02:30', highlight: true },
-  { name: 'ANTEKA',                    start: '02:30', end: '03:45' },
-  { name: 'MEXE',                      start: '03:45', end: '05:00' },
-  { name: 'LATIGO',                    start: '05:00', end: '06:15' },
+interface Artist {
+  name: string;
+  note?: string;
+  highlight?: boolean;
+}
+
+const ARTISTS: Artist[] = [
+  { name: 'DJ LOMAS' },
+  { name: 'LÁTIGO' },
+  { name: 'DJ ALI' },
+  { name: 'WA:DA' },
+  { name: 'DJ NELSON B2B JEAN QUIROGA', highlight: true },
+  { name: 'TABU VIVAR B2B KBNUX', note: 'Vinyl set' },
+  { name: 'MEXE B2B ANTØNIK' },
+  { name: 'JIMBO' },
 ];
 
 export default function LineupPage() {
@@ -35,10 +42,10 @@ export default function LineupPage() {
           <p className="mt-4 text-sm text-zinc-600">{ARTISTS.length} artistas</p>
         </div>
 
-        {/* Timeline */}
+        {/* Timeline (sin horarios) */}
         <div className="relative">
           {/* Línea vertical */}
-          <div className="absolute bottom-0 left-[52px] top-0 w-px bg-gradient-to-b from-zinc-700 via-zinc-800 to-transparent" />
+          <div className="absolute bottom-0 left-1 top-0 w-px bg-gradient-to-b from-zinc-700 via-zinc-800 to-transparent" />
 
           <ol className="flex flex-col">
             {ARTISTS.map((artist, i) => {
@@ -46,19 +53,8 @@ export default function LineupPage() {
               return (
                 <li
                   key={i}
-                  className={`group relative flex items-start gap-0 ${isLast ? '' : 'pb-9'}`}
+                  className={`group relative flex items-start ${isLast ? '' : 'pb-9'}`}
                 >
-                  {/* Hora */}
-                  <div className="w-[52px] shrink-0 pt-[14px] text-right pr-4">
-                    <span className={`font-mono text-[13px] tabular-nums transition-colors ${
-                      artist.highlight
-                        ? 'font-bold text-zinc-200 group-hover:text-white'
-                        : 'text-zinc-500 group-hover:text-zinc-300'
-                    }`}>
-                      {artist.start}
-                    </span>
-                  </div>
-
                   {/* Dot */}
                   <div className="relative shrink-0 pt-[18px]">
                     <div className={`h-2.5 w-2.5 rounded-full border transition-all duration-300 ${
@@ -78,6 +74,12 @@ export default function LineupPage() {
                       {artist.name}
                     </h2>
 
+                    {artist.note && (
+                      <p className="mt-1 text-xs uppercase tracking-[0.24em] text-zinc-500">
+                        {artist.note}
+                      </p>
+                    )}
+
                     {artist.highlight && (
                       <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-2.5 py-0.5 text-[10px] uppercase tracking-[0.2em] text-zinc-400 transition-all duration-300 group-hover:border-white/30 group-hover:bg-white/10 group-hover:text-white">
                         <span className="h-1 w-1 animate-pulse rounded-full bg-zinc-400 group-hover:bg-white" />
@@ -88,21 +90,11 @@ export default function LineupPage() {
                 </li>
               );
             })}
-
-            {/* Hora de cierre */}
-            <li className="relative flex items-center gap-0">
-              <div className="w-[52px] shrink-0 pr-4 text-right">
-                <span className="font-mono text-[13px] tabular-nums text-zinc-700">
-                  {ARTISTS[ARTISTS.length - 1].end}
-                </span>
-              </div>
-              <div className="h-2 w-2 shrink-0 rounded-full border border-zinc-800 bg-zinc-950" />
-            </li>
           </ol>
         </div>
 
         <p className="mt-16 text-xs text-zinc-700">
-          El horario puede sufrir modificaciones.
+          El cartel y orden pueden sufrir modificaciones.
         </p>
       </main>
     </div>

@@ -32,8 +32,8 @@ const DEFAULT_RECEIVER_LABELS = [
 
 const nowIso = () => new Date().toISOString();
 
-function normalizePhone(phone: string): string {
-  return phone.replace(/\s+/g, "").trim();
+function normalizePhone(phone: string | undefined | null): string {
+  return (phone ?? "").replace(/\s+/g, "").trim();
 }
 
 function buildSeedReceivers(createdAt: string): Receiver[] {

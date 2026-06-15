@@ -80,6 +80,15 @@ export default function KahootPlayerPage() {
   useEffect(() => subscribeGame(gameId, setGame), [gameId]);
   useEffect(() => subscribePlayers(gameId, setPlayers), [gameId]);
 
+  // Precargar imágenes de todas las preguntas en cuanto llegan del RTDB.
+  useEffect(() => {
+    const urls = game?.imageUrls;
+    if (!urls?.length) return;
+    urls.forEach((url) => {
+      if (url) new window.Image().src = url;
+    });
+  }, [game?.imageUrls]);
+
   useEffect(() => {
     if (!playerId) {
       setPlayer(null);
@@ -186,15 +195,15 @@ export default function KahootPlayerPage() {
   }
 
   return (
-    <main className="min-h-screen bg-techno px-4 py-5">
-      <div className="mx-auto flex min-h-[calc(100vh-40px)] max-w-md flex-col">
-        <header className="flex items-center justify-between border-b border-zinc-800 pb-4">
+    <main className="h-[100dvh] overflow-hidden bg-techno px-4 py-4">
+      <div className="mx-auto flex h-full max-w-md flex-col">
+        <header className="flex shrink-0 items-center justify-between border-b border-zinc-800 pb-3">
           <div>
             <p className="text-[10px] uppercase tracking-[0.26em] text-zinc-500">Triple Nelson</p>
-            <h1 className="font-display text-2xl font-semibold">{player.name}</h1>
+            <h1 className="font-display text-xl font-semibold">{player.name}</h1>
           </div>
           <div className="text-right">
-            <p className="font-mono text-xl text-cyan-200">{player.score ?? 0}</p>
+            <p className="font-mono text-lg text-cyan-200">{player.score ?? 0}</p>
             <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">puntos</p>
           </div>
         </header>
@@ -231,79 +240,70 @@ export default function KahootPlayerPage() {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -18 }}
-              className="flex flex-1 flex-col py-5"
+              className="flex min-h-0 flex-1 flex-col gap-[1.5vh] py-[1.5vh]"
             >
-              {!timeUp ? (
-                <>
-                  <div className="h-3 overflow-hidden rounded-full bg-zinc-800">
-                    <div
-                      className="h-full rounded-full bg-cyan-300 transition-[width]"
-                      style={{ width: `${progress * 100}%` }}
-                    />
-                  </div>
-                  <div className="mt-3 flex items-center justify-between text-xs uppercase tracking-[0.2em] text-zinc-400">
-                    <span>Pregunta {game.currentQuestionIndex + 1}</span>
-                    <span>{Math.ceil(remainingMs / 1000)}s</span>
-                  </div>
-                </>
-              ) : (
-                <div className="flex items-center justify-between text-xs uppercase tracking-[0.2em] text-zinc-400">
-                  <span>Pregunta {game.currentQuestionIndex + 1}</span>
-                  <span className="text-amber-300">Tiempo agotado</span>
+              {/* Timer */}
+              <div className="shrink-0">
+                <div className="h-2.5 overflow-hidden rounded-full bg-zinc-800">
+                  <div
+                    className="h-full rounded-full bg-cyan-300 transition-[width]"
+                    style={{ width: timeUp ? "0%" : `${progress * 100}%` }}
+                  />
                 </div>
-              )}
+                <div className="mt-1.5 flex items-center justify-between text-[10px] uppercase tracking-[0.2em] text-zinc-400">
+                  <span>Pregunta {game.currentQuestionIndex + 1} / {game.totalQuestions}</span>
+                  {timeUp
+                    ? <span className="text-amber-300">Tiempo agotado</span>
+                    : <span>{Math.ceil(remainingMs / 1000)}s</span>}
+                </div>
+              </div>
 
-              <h2 className="mt-5 font-display text-4xl font-bold leading-tight tracking-tight">
-                {game.currentQuestion.text}
-              </h2>
-              {game.currentQuestion.imageUrl ? (
-                <img
-                  src={game.currentQuestion.imageUrl}
-                  alt=""
-                  className="mt-4 h-40 w-full rounded-lg border border-zinc-800 object-cover"
-                />
-              ) : null}
+              {/* Pregunta + imagen opcional */}
+              <div className={`shrink-0 ${game.currentQuestion.imageUrl ? "flex gap-3" : ""}`}>
+                <h2
+                  className="font-display font-bold leading-tight tracking-tight"
+                  style={{ fontSize: "clamp(1.1rem, 5vw, 1.6rem)" }}
+                >
+                  {game.currentQuestion.text}
+                </h2>
+                {game.currentQuestion.imageUrl ? (
+                  <img
+                    src={game.currentQuestion.imageUrl}
+                    alt=""
+                    className="h-[18vh] w-[40%] shrink-0 rounded-lg border border-zinc-800 object-cover"
+                  />
+                ) : null}
+              </div>
 
-              <div className="mt-auto grid gap-3 pt-5">
+              {/* Respuestas — ocupan todo el espacio restante */}
+              <div className="grid min-h-0 flex-1 gap-[1.5vw]" style={{ gridTemplateRows: "1fr 1fr 1fr 1fr" }}>
                 {game.currentQuestion.options.map((option, index) => {
                   const isCorrect = correctIndex !== null && index === correctIndex;
                   const isMyAnswer = myAnswer?.optionIndex === index;
                   const hasAnswered = player.answered || answering || myAnswer !== null;
                   const showResult = timeUp && correctIndex !== null;
 
-                  // Estilo por defecto: color de la opción.
                   let bg: string = ANSWER_STYLES[index];
                   let ring = "";
                   let dimmed = false;
                   let badge: React.ReactNode = null;
 
                   if (showResult) {
-                    // Spec del reveal:
-                    //  - Acertó (mi respuesta == correcta): MI botón verde + ✓, demás grises.
-                    //  - Falló: MI botón rojo + ✗, el correcto verde + ✓, demás grises.
-                    //  - Sin respuesta: solo correcto verde + ✓, demás grises.
                     if (isMyAnswer && isCorrect) {
-                      bg = "bg-[#16a34a]";
-                      ring = "ring-4 ring-white";
-                      badge = <span className="text-2xl leading-none">✓</span>;
+                      bg = "bg-[#16a34a]"; ring = "ring-4 ring-white";
+                      badge = <span className="shrink-0 text-xl leading-none">✓</span>;
                     } else if (isMyAnswer) {
-                      bg = "bg-[#dc2626]";
-                      ring = "ring-4 ring-white";
-                      badge = <span className="text-2xl leading-none">✗</span>;
+                      bg = "bg-[#dc2626]"; ring = "ring-4 ring-white";
+                      badge = <span className="shrink-0 text-xl leading-none">✗</span>;
                     } else if (isCorrect) {
                       bg = "bg-[#16a34a]";
-                      badge = <span className="text-2xl leading-none">✓</span>;
+                      badge = <span className="shrink-0 text-xl leading-none">✓</span>;
                     } else {
-                      bg = "bg-zinc-700";
-                      dimmed = true;
+                      bg = "bg-zinc-700"; dimmed = true;
                     }
                   } else if (hasAnswered) {
-                    // Aún no hay resultado: solo resaltar la opción elegida.
-                    if (isMyAnswer) {
-                      ring = "ring-4 ring-white";
-                    } else {
-                      dimmed = true;
-                    }
+                    if (isMyAnswer) { ring = "ring-4 ring-white"; }
+                    else { dimmed = true; }
                   }
 
                   return (
@@ -312,19 +312,19 @@ export default function KahootPlayerPage() {
                       type="button"
                       disabled={timeUp || player.answered || answering}
                       onClick={() => void answer(index as AnswerIndex)}
-                      className={`min-h-[78px] rounded-lg px-5 py-4 text-left text-xl font-bold text-white shadow-lg transition ${bg} ${ring} ${dimmed ? "opacity-40" : ""}`}
+                      className={`flex min-h-0 w-full items-center justify-between gap-2 overflow-hidden rounded-lg px-4 font-bold text-white shadow-lg transition active:scale-[0.98] ${bg} ${ring} ${dimmed ? "opacity-40" : ""}`}
+                      style={{ fontSize: "clamp(0.85rem, 3.8vw, 1.15rem)" }}
                     >
-                      <span className="flex items-center justify-between gap-2">
-                        {option}
-                        {badge}
-                      </span>
+                      <span className="min-w-0 text-left">{option}</span>
+                      {badge}
                     </button>
                   );
                 })}
               </div>
 
+              {/* Feedback resultado */}
               {timeUp && correctIndex !== null ? (
-                <div className={`mt-4 rounded-lg border px-4 py-3 text-center font-bold ${
+                <div className={`shrink-0 rounded-lg border px-3 py-2 text-center text-sm font-bold ${
                   myAnswer?.optionIndex === correctIndex
                     ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
                     : myAnswer !== null
@@ -333,24 +333,20 @@ export default function KahootPlayerPage() {
                 }`}>
                   {myAnswer?.optionIndex === correctIndex
                     ? `¡Correcto! · +${player.lastGain ?? "..."} pts`
-                    : myAnswer !== null
-                      ? "Incorrecto"
-                      : "¡Tiempo!"}
+                    : myAnswer !== null ? "Incorrecto" : "¡Tiempo!"}
                 </div>
               ) : timeUp ? (
-                <p className="mt-4 rounded-lg border border-zinc-700 bg-black/30 px-4 py-3 text-center text-sm text-zinc-400">
+                <p className="shrink-0 rounded-lg border border-zinc-700 bg-black/30 px-3 py-2 text-center text-xs text-zinc-400">
                   Esperando resultados...
                 </p>
               ) : player.answered || answering ? (
-                <p className="mt-4 rounded-lg border border-lime-400/40 bg-lime-400/10 px-4 py-3 text-center font-bold text-lime-200">
+                <p className="shrink-0 rounded-lg border border-lime-400/40 bg-lime-400/10 px-3 py-2 text-center text-sm font-bold text-lime-200">
                   Enviado — espera al resto
                 </p>
               ) : null}
 
-              {!timeUp && error ? <p className="mt-3 text-sm text-rose-300">{error}</p> : null}
-              {timeUp ? (
-                <p className="mt-3 text-center text-sm text-zinc-500">Esperando al host...</p>
-              ) : null}
+              {!timeUp && error ? <p className="shrink-0 text-sm text-rose-300">{error}</p> : null}
+              {timeUp ? <p className="shrink-0 text-center text-xs text-zinc-500">Esperando al host...</p> : null}
             </motion.section>
           ) : null}
 

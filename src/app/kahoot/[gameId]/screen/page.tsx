@@ -64,6 +64,15 @@ export default function KahootScreenPage() {
     };
   }, [gameId]);
 
+  // Precargar imágenes de todas las preguntas en cuanto llega el GameState.
+  useEffect(() => {
+    const urls = game?.imageUrls;
+    if (!urls?.length) return;
+    urls.forEach((url) => {
+      if (url) new window.Image().src = url;
+    });
+  }, [game?.imageUrls]);
+
   useEffect(() => {
     if (!game || game.currentQuestionIndex < 0) {
       setAnswers({});
@@ -83,21 +92,22 @@ export default function KahootScreenPage() {
   }, [gameId]);
 
   return (
-    <main className="min-h-screen overflow-hidden bg-techno px-8 py-8 text-white">
-      <div className="mx-auto flex min-h-[calc(100vh-64px)] max-w-[1500px] flex-col">
-        <header className="flex items-center justify-between border-b border-zinc-800 pb-5">
+    <main className="h-[100dvh] overflow-hidden bg-techno px-6 py-5 text-white lg:px-8">
+      <div className="mx-auto flex h-full max-w-[1500px] flex-col">
+        <header className="flex shrink-0 items-center justify-between border-b border-zinc-800 pb-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-cyan-300">Triple Nelson Kahoot</p>
-            <h1 className="font-display text-6xl font-bold tracking-tight">
+            <p className="text-xs uppercase tracking-[0.4em] text-cyan-300 md:text-sm">Triple Nelson Kahoot</p>
+            <h1 className="font-display text-4xl font-bold tracking-tight md:text-6xl">
               {game?.status === "lobby" ? "Lobby" : `Game ${gameId}`}
             </h1>
           </div>
-          <div className="rounded-lg border border-zinc-700 bg-black/60 px-6 py-4 text-right">
-            <p className="font-mono text-5xl text-cyan-200">{gameId}</p>
+          <div className="rounded-lg border border-zinc-700 bg-black/60 px-5 py-3 text-right md:px-6 md:py-4">
+            <p className="font-mono text-4xl text-cyan-200 md:text-5xl">{gameId}</p>
             <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">codigo</p>
           </div>
         </header>
 
+        <div className="flex min-h-0 flex-1 flex-col">
         <AnimatePresence mode="wait">
           {!game ? (
             <motion.section
@@ -117,7 +127,7 @@ export default function KahootScreenPage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -24 }}
-              className="grid flex-1 gap-10 py-10 lg:grid-cols-[440px_1fr]"
+              className="grid min-h-0 flex-1 gap-10 py-[2vh] lg:grid-cols-[440px_1fr]"
             >
               <div className="flex flex-col justify-center">
                 <div className="rounded-lg border border-white/20 bg-white p-7">
@@ -156,83 +166,127 @@ export default function KahootScreenPage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -24 }}
-              className="flex flex-1 flex-col py-8"
+              className="flex min-h-0 flex-1 flex-col gap-[1.5vh] py-[2vh]"
             >
-              <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-                <div>
-                  <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em] text-zinc-400">
-                    <span>Pregunta {game.currentQuestionIndex + 1} / {game.totalQuestions}</span>
-                    {timeUp ? (
-                      <span className="text-amber-300">Tiempo agotado</span>
-                    ) : (
-                      <span>{Math.ceil(remainingMs / 1000)} segundos</span>
-                    )}
+              {/* Barra de progreso + timer — siempre arriba */}
+              <div className="shrink-0">
+                <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] text-zinc-400 md:text-sm">
+                  <span>Pregunta {game.currentQuestionIndex + 1} / {game.totalQuestions}</span>
+                  {timeUp ? (
+                    <span className="text-amber-300">Tiempo agotado</span>
+                  ) : (
+                    <span>{Math.ceil(remainingMs / 1000)} segundos</span>
+                  )}
+                </div>
+                {!timeUp ? (
+                  <div className="mt-2 h-3 overflow-hidden rounded-full bg-zinc-800">
+                    <div
+                      className="h-full rounded-full bg-cyan-300 transition-[width]"
+                      style={{ width: `${progress * 100}%` }}
+                    />
                   </div>
-                  {!timeUp ? (
-                    <div className="mt-4 h-5 overflow-hidden rounded-full bg-zinc-800">
-                      <div
-                        className="h-full rounded-full bg-cyan-300 transition-[width]"
-                        style={{ width: `${progress * 100}%` }}
+                ) : null}
+              </div>
+
+              {game.currentQuestion.imageUrl ? (
+                /* ── CON IMAGEN: pregunta izquierda | imagen derecha, luego respuestas abajo ── */
+                <>
+                  <div className="grid min-h-0 shrink-0 gap-6 lg:grid-cols-[1fr_1fr]" style={{ height: "38vh" }}>
+                    {/* Pregunta */}
+                    <div className="flex min-h-0 items-center">
+                      <h2
+                        className="font-display font-bold leading-[1.05] tracking-tight"
+                        style={{ fontSize: "clamp(1.6rem, 3.6vw, 4.5rem)" }}
+                      >
+                        {game.currentQuestion.text}
+                      </h2>
+                    </div>
+                    {/* Imagen — ocupa todo el alto del contenedor */}
+                    <div className="min-h-0 overflow-hidden rounded-xl border border-zinc-800">
+                      <img
+                        src={game.currentQuestion.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
                       />
                     </div>
-                  ) : null}
-                  <h2 className="mt-8 font-display text-6xl font-bold leading-tight tracking-tight xl:text-8xl">
-                    {game.currentQuestion.text}
-                  </h2>
-                </div>
-
-                {game.currentQuestion.imageUrl ? (
-                  <img
-                    src={game.currentQuestion.imageUrl}
-                    alt=""
-                    className="h-[38vh] w-full rounded-lg border border-zinc-800 object-cover"
-                  />
-                ) : (
-                  <div className="hidden rounded-lg border border-zinc-800 bg-black/30 lg:block" />
-                )}
-              </div>
-
-              <div className="mt-auto grid gap-4 pt-8 md:grid-cols-2">
-                {game.currentQuestion.options.map((option, index) => {
-                  const isCorrect = correctIndex !== null && index === correctIndex;
-                  const showResult = timeUp && correctIndex !== null;
-                  const bg = showResult
-                    ? isCorrect
-                      ? "#16a34a"
-                      : "#3f3f46"
-                    : ANSWER_COLORS[index];
-                  return (
-                    <motion.div
-                      key={option}
-                      initial={{ opacity: 0, y: 18 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.08 }}
-                      className="min-h-[128px] rounded-lg px-8 py-7 text-4xl font-bold leading-tight text-white shadow-2xl flex items-center justify-between transition-all"
-                      style={{
-                        backgroundColor: bg,
-                        opacity: showResult && !isCorrect ? 0.45 : 1,
-                        outline: showResult && isCorrect ? "6px solid white" : "none",
-                        transform: showResult && isCorrect ? "scale(1.02)" : "scale(1)",
-                      }}
+                  </div>
+                  <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+                    {game.currentQuestion.options.map((option, index) => {
+                      const isCorrect = correctIndex !== null && index === correctIndex;
+                      const showResult = timeUp && correctIndex !== null;
+                      const bg = showResult ? (isCorrect ? "#16a34a" : "#3f3f46") : ANSWER_COLORS[index];
+                      return (
+                        <motion.div
+                          key={option}
+                          initial={{ opacity: 0, y: 18 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.08 }}
+                          className="flex min-h-0 items-center justify-between gap-4 overflow-hidden rounded-lg px-6 py-3 font-bold leading-tight text-white shadow-2xl transition-all"
+                          style={{
+                            backgroundColor: bg,
+                            fontSize: "clamp(1.1rem, 2.2vw, 2.2rem)",
+                            opacity: showResult && !isCorrect ? 0.45 : 1,
+                            outline: showResult && isCorrect ? "6px solid white" : "none",
+                            transform: showResult && isCorrect ? "scale(1.02)" : "scale(1)",
+                          }}
+                        >
+                          <span className="min-w-0">{option}</span>
+                          {showResult ? <span className="shrink-0 text-[1.4em]">{isCorrect ? "✓" : "✗"}</span> : null}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : (
+                /* ── SIN IMAGEN: pregunta arriba (crece según texto), respuestas llenan el resto ── */
+                <>
+                  <div className="shrink-0">
+                    <h2
+                      className="font-display font-bold leading-[1.05] tracking-tight"
+                      style={{ fontSize: "clamp(2.2rem, 5.5vw, 7rem)" }}
                     >
-                      <span>{option}</span>
-                      {showResult ? (
-                        <span className="text-5xl">{isCorrect ? "✓" : "✗"}</span>
-                      ) : null}
-                    </motion.div>
-                  );
-                })}
-              </div>
+                      {game.currentQuestion.text}
+                    </h2>
+                  </div>
+                  <div className="grid min-h-0 flex-1 gap-3 md:grid-cols-2">
+                    {game.currentQuestion.options.map((option, index) => {
+                      const isCorrect = correctIndex !== null && index === correctIndex;
+                      const showResult = timeUp && correctIndex !== null;
+                      const bg = showResult ? (isCorrect ? "#16a34a" : "#3f3f46") : ANSWER_COLORS[index];
+                      return (
+                        <motion.div
+                          key={option}
+                          initial={{ opacity: 0, y: 18 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ delay: index * 0.08 }}
+                          className="flex min-h-0 items-center justify-between gap-4 overflow-hidden rounded-lg px-8 py-4 font-bold leading-tight text-white shadow-2xl transition-all"
+                          style={{
+                            backgroundColor: bg,
+                            fontSize: "clamp(1.4rem, 2.8vw, 2.8rem)",
+                            opacity: showResult && !isCorrect ? 0.45 : 1,
+                            outline: showResult && isCorrect ? "6px solid white" : "none",
+                            transform: showResult && isCorrect ? "scale(1.02)" : "scale(1)",
+                          }}
+                        >
+                          <span className="min-w-0">{option}</span>
+                          {showResult ? <span className="shrink-0 text-[1.4em]">{isCorrect ? "✓" : "✗"}</span> : null}
+                        </motion.div>
+                      );
+                    })}
+                  </div>
+                </>
+              )}
+
 
               {!timeUp ? (
-                <div className="mt-7 rounded-lg border border-zinc-800 bg-black/50 p-5">
+                <div className="shrink-0 rounded-lg border border-zinc-800 bg-black/50 p-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm uppercase tracking-[0.3em] text-zinc-400">Respuestas</p>
-                    <p className="font-mono text-3xl text-cyan-200">
+                    <p className="text-xs uppercase tracking-[0.3em] text-zinc-400 md:text-sm">Respuestas</p>
+                    <p className="font-mono text-2xl text-cyan-200 md:text-3xl">
                       {answerCount}/{playerCount}
                     </p>
                   </div>
-                  <div className="mt-3 h-6 overflow-hidden rounded-full bg-zinc-800">
+                  <div className="mt-2 h-5 overflow-hidden rounded-full bg-zinc-800">
                     <div
                       className="h-full rounded-full bg-lime-300 transition-[width]"
                       style={{ width: `${answerProgress * 100}%` }}
@@ -247,12 +301,12 @@ export default function KahootScreenPage() {
                   const wrongCount = answerCount - correctCount;
                   const total = Math.max(1, answerCount);
                   return (
-                    <div className="mt-7 rounded-lg border border-zinc-800 bg-black/50 p-5">
-                      <div className="flex items-center justify-between text-sm uppercase tracking-[0.3em]">
+                    <div className="shrink-0 rounded-lg border border-zinc-800 bg-black/50 p-4">
+                      <div className="flex items-center justify-between text-xs uppercase tracking-[0.3em] md:text-sm">
                         <span className="text-emerald-300">Acertaron · {correctCount}</span>
                         <span className="text-rose-300">Fallaron · {wrongCount}</span>
                       </div>
-                      <div className="mt-3 flex h-6 overflow-hidden rounded-full bg-zinc-800">
+                      <div className="mt-2 flex h-5 overflow-hidden rounded-full bg-zinc-800">
                         <div
                           className="h-full bg-emerald-500 transition-[width]"
                           style={{ width: `${(correctCount / total) * 100}%` }}
@@ -262,18 +316,18 @@ export default function KahootScreenPage() {
                           style={{ width: `${(wrongCount / total) * 100}%` }}
                         />
                       </div>
-                      <p className="mt-3 text-center text-sm text-zinc-400">
+                      <p className="mt-2 text-center text-xs text-zinc-400 md:text-sm">
                         Esperando al host para continuar...
                       </p>
                     </div>
                   );
                 })()
               ) : (
-                <div className="mt-7 rounded-lg border border-amber-500/30 bg-amber-500/10 p-5 text-center">
-                  <p className="text-sm uppercase tracking-[0.3em] text-amber-300">
+                <div className="shrink-0 rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-center">
+                  <p className="text-xs uppercase tracking-[0.3em] text-amber-300 md:text-sm">
                     {allAnswered ? `Todos respondieron · ${answerCount}/${playerCount}` : `Respondieron · ${answerCount}/${playerCount}`}
                   </p>
-                  <p className="mt-1 text-zinc-400 text-sm">Esperando al host para revelar...</p>
+                  <p className="mt-1 text-xs text-zinc-400 md:text-sm">Esperando al host para revelar...</p>
                 </div>
               )}
             </motion.section>
@@ -313,14 +367,14 @@ export default function KahootScreenPage() {
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -24 }}
-              className="flex flex-1 flex-col justify-center py-10"
+              className="flex min-h-0 flex-1 flex-col justify-center py-[2vh]"
             >
               <p className="text-sm uppercase tracking-[0.4em] text-fuchsia-300">Final</p>
-              <h2 className="mt-2 font-display text-8xl font-bold tracking-tight">Podio</h2>
-              <div className="mt-12 grid grid-cols-3 items-end gap-6">
+              <h2 className="mt-2 font-display text-6xl font-bold tracking-tight md:text-8xl">Podio</h2>
+              <div className="mt-[4vh] grid grid-cols-3 items-end gap-6">
                 {[leaderboard[1], leaderboard[0], leaderboard[2]].map((entry, index) => {
                   const place = index === 0 ? 2 : index === 1 ? 1 : 3;
-                  const heights = ["h-[300px]", "h-[420px]", "h-[230px]"];
+                  const heights = ["h-[30vh]", "h-[42vh]", "h-[23vh]"];
                   return (
                     <motion.div
                       key={entry?.playerId ?? place}
@@ -341,6 +395,7 @@ export default function KahootScreenPage() {
             </motion.section>
           ) : null}
         </AnimatePresence>
+        </div>
       </div>
     </main>
   );

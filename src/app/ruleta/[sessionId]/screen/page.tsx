@@ -266,7 +266,7 @@ export default function RouletteScreenPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <main className="min-h-screen overflow-hidden bg-techno px-8 py-6 text-white">
+    <main className="h-[100dvh] overflow-hidden bg-techno px-6 py-5 text-white lg:px-8">
       {/* Overlay RIEN NE VA PLUS */}
       <AnimatePresence>
         {showRien ? (
@@ -289,25 +289,26 @@ export default function RouletteScreenPage() {
         ) : null}
       </AnimatePresence>
 
-      <div className="mx-auto flex min-h-[calc(100vh-48px)] max-w-[1600px] flex-col">
-        <header className="flex items-center justify-between border-b border-zinc-800 pb-4">
+      <div className="mx-auto flex h-full max-w-[1600px] flex-col">
+        <header className="flex shrink-0 items-center justify-between border-b border-zinc-800 pb-4">
           <div>
-            <p className="text-sm uppercase tracking-[0.4em] text-cyan-300">Triple Nelson · Ruleta</p>
-            <h1 className="font-display text-5xl font-bold tracking-tight">
+            <p className="text-xs uppercase tracking-[0.4em] text-cyan-300 md:text-sm">Triple Nelson · Ruleta</p>
+            <h1 className="font-display text-4xl font-bold tracking-tight md:text-5xl">
               {session?.status === "lobby" ? "Lobby" : `Sesión ${sessionId}`}
             </h1>
           </div>
           <div className="rounded-lg border border-zinc-700 bg-black/60 px-5 py-3 text-right">
-            <p className="font-mono text-4xl text-cyan-200">{sessionId}</p>
+            <p className="font-mono text-3xl text-cyan-200 md:text-4xl">{sessionId}</p>
             <p className="text-xs uppercase tracking-[0.3em] text-zinc-500">código</p>
           </div>
         </header>
 
+        <div className="flex min-h-0 flex-1 flex-col">
         <AnimatePresence mode="wait">
           {/* ─── LOBBY ─── */}
           {session?.status === "lobby" ? (
             <motion.section key="lobby" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }}
-              className="grid flex-1 gap-10 py-8 lg:grid-cols-[400px_1fr]">
+              className="grid min-h-0 flex-1 gap-10 py-[2vh] lg:grid-cols-[400px_1fr]">
               <div className="flex flex-col justify-center gap-5">
                 <div className="rounded-lg border border-white/20 bg-white p-6">
                   <QRCodeSVG value={joinUrl} size={320} includeMargin />
@@ -339,7 +340,7 @@ export default function RouletteScreenPage() {
           {/* ─── BETTING / SPINNING ─── */}
           {session && (session.status === "betting_open" || session.status === "spinning") ? (
             <motion.section key="play" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="grid flex-1 gap-6 py-6 lg:grid-cols-[1fr_420px]">
+              className="grid min-h-0 flex-1 gap-6 py-[2vh] lg:grid-cols-[1fr_420px]">
 
               {/* Rueda */}
               <div className="flex flex-col items-center justify-center gap-4">
@@ -426,7 +427,7 @@ export default function RouletteScreenPage() {
           {/* ─── RESULT ─── */}
           {session?.status === "result" && result !== null ? (
             <motion.section key={`result-${round?.index}`} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0 }}
-              className="grid flex-1 gap-10 py-8 lg:grid-cols-[1fr_1fr] items-center">
+              className="grid min-h-0 flex-1 items-center gap-10 py-[2vh] lg:grid-cols-[1fr_1fr]">
               <div className="flex flex-col items-center justify-center">
                 <p className="text-sm uppercase tracking-[0.4em] text-amber-300">Resultado · Ronda {round?.index}</p>
                 <motion.div
@@ -483,13 +484,13 @@ export default function RouletteScreenPage() {
           {/* ─── FINISHED ─── */}
           {session?.status === "finished" ? (
             <motion.section key="finished" initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="flex flex-1 flex-col justify-center py-8">
+              className="flex min-h-0 flex-1 flex-col justify-center py-[2vh]">
               <p className="text-sm uppercase tracking-[0.4em] text-fuchsia-300">Partida finalizada</p>
-              <h2 className="mt-2 font-display text-8xl font-bold">Podio</h2>
-              <div className="mt-10 grid grid-cols-3 items-end gap-6">
+              <h2 className="mt-2 font-display text-6xl font-bold md:text-8xl">Podio</h2>
+              <div className="mt-[4vh] grid grid-cols-3 items-end gap-6">
                 {[leaderboard[1], leaderboard[0], leaderboard[2]].map((entry, i) => {
                   const place = i === 0 ? 2 : i === 1 ? 1 : 3;
-                  const heights = ["h-[280px]", "h-[400px]", "h-[210px]"];
+                  const heights = ["h-[28vh]", "h-[40vh]", "h-[21vh]"];
                   return (
                     <motion.div key={entry?.playerId ?? place} initial={{ opacity: 0, y: 60 }} animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.15, type: "spring", stiffness: 90 }} className="text-center">
@@ -514,6 +515,7 @@ export default function RouletteScreenPage() {
             </motion.section>
           ) : null}
         </AnimatePresence>
+        </div>
       </div>
     </main>
   );
