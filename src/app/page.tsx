@@ -14,7 +14,7 @@ const TARGET_TIMESTAMP = new Date('2026-06-20T23:59:59').getTime();
 const ENV = process.env.NEXT_PUBLIC_FIREBASE_ENV ?? 'dev';
 
 function isPhotosVisible(): boolean {
-  const v = (process.env.FEATURE_PHOTO_UPLOAD_ENABLED ?? "").trim().toLowerCase();
+  const v = (process.env.FEATURE_PHOTOS_BUTTON_VISIBLE ?? "").trim().toLowerCase();
   return v === "1" || v === "true" || v === "yes" || v === "on";
 }
 

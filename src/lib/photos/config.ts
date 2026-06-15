@@ -60,22 +60,29 @@ export function expectedKeyPrefix(photoId: string): string {
 // ─── Validación de archivos ──────────────────────────────────────────────────
 
 export const MAX_FILE_SIZE_BYTES = Number(
-  process.env.PHOTO_MAX_FILE_SIZE_BYTES ?? String(10 * 1024 * 1024), // 10 MB
+  process.env.PHOTO_MAX_FILE_SIZE_BYTES ?? String(200 * 1024 * 1024), // 200 MB
 );
 
-/**
- * MIME types permitidos → extensión canónica que usaremos en la key S3.
- * HEIC se acepta a nivel de subida; los navegadores no lo previsualizan,
- * pero el objeto queda almacenado correctamente.
- */
+/** MIME types permitidos → extensión canónica para la key S3. */
 export const ALLOWED_MIME_TO_EXT: Record<string, string> = {
+  // Imágenes
   "image/jpeg": "jpg",
   "image/jpg": "jpg",
   "image/png": "png",
   "image/webp": "webp",
   "image/heic": "heic",
   "image/heif": "heic",
+  // Vídeos
+  "video/mp4": "mp4",
+  "video/quicktime": "mov",   // iPhone .mov
+  "video/x-m4v": "m4v",
+  "video/webm": "webm",
+  "video/3gpp": "3gp",        // Android legacy
 };
+
+export function isVideoMime(mime: string): boolean {
+  return mime.startsWith("video/");
+}
 
 export function isAllowedMime(mime: string): boolean {
   return Object.prototype.hasOwnProperty.call(ALLOWED_MIME_TO_EXT, mime.toLowerCase());
