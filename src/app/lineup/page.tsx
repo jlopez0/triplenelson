@@ -10,13 +10,14 @@ interface Artist {
 
 const ARTISTS: Artist[] = [
   { name: 'DJ LOMAS' },
-  { name: 'LÁTIGO' },
   { name: 'DJ ALI' },
-  { name: 'WA:DA' },
-  { name: 'DJ NELSON B2B JEAN QUIROGA', highlight: true },
-  { name: 'TABU VIVAR B2B KBNUX', note: 'Vinyl set' },
-  { name: 'MEXE B2B ANTØNIK' },
   { name: 'JIMBO' },
+  { name: 'TABU VIVAR' },
+  { name: 'KBNUX' },
+  { name: 'DJ NELSON B2B JEAN QUIROGA', highlight: true },
+  { name: 'MEXE B2B ANTØNIK' },
+  { name: 'WA:DA' },
+  { name: 'LÁTIGO' },
 ];
 
 export default function LineupPage() {

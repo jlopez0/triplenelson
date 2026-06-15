@@ -22,7 +22,7 @@ function getClient(): S3Client {
   return _client;
 }
 
-const PRESIGN_PUT_EXPIRES = 300; // 5 min para completar la subida
+const PRESIGN_PUT_EXPIRES = 3600; // 1h — vídeos de 200 MB necesitan más tiempo en 4G
 
 /**
  * Genera una presigned PUT URL para que el cliente suba directamente a S3.

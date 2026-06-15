@@ -25,6 +25,7 @@ export async function GET() {
     const publicPhotos = photos.map((p) => ({
       id: p.id,
       url: p.url,
+      mimeType: p.mimeType,
       createdAt: p.createdAt,
       originalFileName: p.originalFileName,
     }));

@@ -6,8 +6,13 @@ import Link from "next/link";
 interface GalleryPhoto {
   id: string;
   url: string;
+  mimeType: string;
   createdAt: string;
   originalFileName: string;
+}
+
+function isVideoMimeType(mime: string): boolean {
+  return (mime ?? "").startsWith("video/");
 }
 
 interface UploadTask {
@@ -18,8 +23,11 @@ interface UploadTask {
   error?: string;
 }
 
-const ALLOWED = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif"];
-const MAX_BYTES = 10 * 1024 * 1024;
+const ALLOWED = [
+  "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "image/heif",
+  "video/mp4", "video/quicktime", "video/x-m4v", "video/webm", "video/3gpp",
+];
+const MAX_BYTES = 200 * 1024 * 1024;
 
 export default function GalleryPage() {
   const [enabled, setEnabled] = useState<boolean | null>(null);
@@ -86,9 +94,12 @@ export default function GalleryPage() {
     }
   }
 
+  function isVideo(file: File): boolean {
+    return file.type.toLowerCase().startsWith("video/");
+  }
+
   function validateFile(file: File): string | null {
     const t = file.type.toLowerCase();
-    // Aceptamos HEIC aquí porque se convertirá a JPG antes de subir.
     const okType = ALLOWED.includes(t) || isHeic(file);
     if (!okType) return "Formato no permitido.";
     if (file.size > MAX_BYTES) return `Supera ${(MAX_BYTES / 1024 / 1024).toFixed(0)} MB.`;
@@ -166,8 +177,8 @@ export default function GalleryPage() {
       const task = newTasks[i];
       if (task.status === "error") continue;
       try {
-        // Convertir HEIC→JPG en el móvil antes de subir (si aplica).
-        const prepared = await maybeConvertHeic(fileArray[i]);
+        // Vídeos: subir tal cual. HEIC: convertir a JPG antes.
+        const prepared = isVideo(fileArray[i]) ? fileArray[i] : await maybeConvertHeic(fileArray[i]);
         await uploadOne(prepared, task.localId);
       } catch (err) {
         setTasks((prev) =>
@@ -309,17 +320,16 @@ export default function GalleryPage() {
         {enabled ? (
           <section className="mb-8">
             <div className="grid grid-cols-2 gap-2 sm:gap-3">
-              {/* Galería: en iOS/Android abre el selector de fotos nativo.
-                  accept="image/*" + extensiones HEIC para fotos de iPhone. */}
+              {/* Galería: en iOS/Android abre el selector de fotos y vídeos nativo. */}
               <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-cyan-400/40 bg-cyan-400/5 px-4 py-6 text-center transition hover:border-cyan-300 hover:bg-cyan-400/10 active:scale-[0.98]">
                 <span className="text-2xl">🖼️</span>
                 <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-200 sm:text-sm">
-                  {uploading ? "Subiendo..." : "Desde galería"}
+                  {uploading ? "Subiendo..." : "Fotos y vídeos"}
                 </span>
                 <input
                   ref={galleryInputRef}
                   type="file"
-                  accept="image/*,.heic,.heif"
+                  accept="image/*,video/*,.heic,.heif"
                   multiple
                   disabled={uploading}
                   className="hidden"
@@ -331,12 +341,12 @@ export default function GalleryPage() {
               <label className="flex cursor-pointer flex-col items-center justify-center gap-1.5 rounded-xl border border-fuchsia-400/40 bg-fuchsia-400/5 px-4 py-6 text-center transition hover:border-fuchsia-300 hover:bg-fuchsia-400/10 active:scale-[0.98]">
                 <span className="text-2xl">📸</span>
                 <span className="text-xs font-semibold uppercase tracking-[0.16em] text-fuchsia-200 sm:text-sm">
-                  Hacer foto
+                  Hacer foto/vídeo
                 </span>
                 <input
                   ref={cameraInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/*,video/*"
                   capture="environment"
                   disabled={uploading}
                   className="hidden"
@@ -344,7 +354,7 @@ export default function GalleryPage() {
                 />
               </label>
             </div>
-            <p className="mt-2 text-center text-xs text-zinc-500">JPG · PNG · WEBP · HEIC — máx 10 MB</p>
+            <p className="mt-2 text-center text-xs text-zinc-500">Fotos (JPG · PNG · WEBP · HEIC) · Vídeos (MP4 · MOV) — máx 200 MB</p>
 
             {tasks.length ? (
               <div className="mt-3 space-y-2">
@@ -396,15 +406,27 @@ export default function GalleryPage() {
                   className="group relative aspect-square cursor-pointer overflow-hidden rounded-md bg-zinc-900"
                   onClick={() => (selectMode ? toggleSelect(photo.id) : setLightboxIndex(index))}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={photo.url}
-                    alt={photo.originalFileName}
-                    loading="lazy"
-                    className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${
-                      selectMode && !isSelected ? "opacity-60" : ""
-                    }`}
-                  />
+                  {isVideoMimeType(photo.mimeType) ? (
+                    <>
+                      {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
+                      <video
+                        src={photo.url}
+                        className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${selectMode && !isSelected ? "opacity-60" : ""}`}
+                        preload="metadata"
+                        muted
+                        playsInline
+                      />
+                      <span className="absolute bottom-1.5 right-1.5 rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">▶</span>
+                    </>
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={photo.url}
+                      alt={photo.originalFileName}
+                      loading="lazy"
+                      className={`h-full w-full object-cover transition duration-300 group-hover:scale-105 ${selectMode && !isSelected ? "opacity-60" : ""}`}
+                    />
+                  )}
                   {selectMode ? (
                     <div
                       className={`absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full border-2 text-xs font-bold ${
@@ -485,13 +507,25 @@ export default function GalleryPage() {
               </button>
             ) : null}
 
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              key={lightboxPhoto.id}
-              src={lightboxPhoto.url}
-              alt={lightboxPhoto.originalFileName}
-              className="max-h-full max-w-full object-contain"
-            />
+            {isVideoMimeType(lightboxPhoto.mimeType) ? (
+              // eslint-disable-next-line jsx-a11y/media-has-caption
+              <video
+                key={lightboxPhoto.id}
+                src={lightboxPhoto.url}
+                className="max-h-full max-w-full"
+                controls
+                autoPlay
+                playsInline
+              />
+            ) : (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                key={lightboxPhoto.id}
+                src={lightboxPhoto.url}
+                alt={lightboxPhoto.originalFileName}
+                className="max-h-full max-w-full object-contain"
+              />
+            )}
 
             {photos.length > 1 ? (
               <button
