@@ -510,6 +510,12 @@ export default function AdminPage() {
             <Link href="/ruleta/admin" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
               Ruleta
             </Link>
+            <Link href="/admin/scan" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
+              Escáner
+            </Link>
+            <Link href="/admin/fotos" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
+              📸 Fotos
+            </Link>
             <button type="button" onClick={() => setShowManualModal(true)} className="btn-primary text-[11px] md:text-xs px-3 py-2">
               + Pago
             </button>

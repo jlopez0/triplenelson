@@ -4,6 +4,8 @@ import { Resend } from "resend";
 import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import { checkRateLimit } from "./rate-limit";
 import { readDbSnapshot, withDbTransaction } from "./store";
+import { createTicketIfNotExists } from "@/lib/tickets/firestore";
+import type { TicketDoc } from "@/lib/tickets/types";
 import type {
   AuditLog,
   BizumDb,
@@ -197,6 +199,44 @@ function getEventOrThrow(db: BizumDb, eventId: string): BizumEvent {
     });
   }
   return event;
+}
+
+/**
+ * Crea los docs en la colección `tickets` de Firestore (escáner de puerta).
+ *
+ * Idempotente: si los docs ya existen no los pisa. Se llama tras una
+ * transacción de la DB principal — los fallos NO deben revertir el pago.
+ */
+async function syncTicketsToFirestore(intent: PaymentIntent): Promise<void> {
+  const codes = intent.ticketCodes ?? [];
+  if (!codes.length) return;
+
+  const unitPrice = Math.round(intent.amountCents / Math.max(1, intent.quantity));
+  const paidAt = intent.paidAt ?? intent.updatedAt ?? intent.createdAt;
+
+  await Promise.all(
+    codes.map((ticketCode, i) => {
+      const ticket: TicketDoc = {
+        ticketCode,
+        intentId: intent.id,
+        eventId: intent.eventId,
+        buyerName: intent.buyerName ?? null,
+        buyerEmail: intent.userKey,
+        ticketType: intent.ticketType ?? null,
+        amountCents: unitPrice,
+        position: i + 1,
+        totalInIntent: codes.length,
+        receiverId: intent.receiverId,
+        paidAt,
+        used: false,
+        usedAt: null,
+        usedBy: null,
+      };
+      return createTicketIfNotExists(ticket).catch((err) => {
+        console.error("[tickets] sync failed", { ticketCode, error: err });
+      });
+    }),
+  );
 }
 
 function generateTicket(intent: PaymentIntent, index: number): { ticketCode: string; qrPayload: string } {
@@ -669,11 +709,18 @@ export async function markPaid(params: { intentId: string; adminKey: string; ip:
 
     return {
       intent: toPublicIntent(intent),
+      rawIntent: { ...intent },
       qrPayloads: intent.qrPayloads ?? [],
       eventName: event?.name ?? intent.eventId,
       userEmail: intent.userKey,
       eventId: intent.eventId,
     };
+  });
+
+  // Sincronizar tickets a la colección Firestore para el escáner.
+  // Fuera de la transacción: si falla, NO debe revertir el pago.
+  await syncTicketsToFirestore(marked.rawIntent).catch((err) => {
+    console.error("[markPaid] syncTicketsToFirestore failed:", err);
   });
 
   let emailDelivery: { attempted: number; sent: number; skipped: boolean; reason?: string } = {
@@ -844,11 +891,17 @@ export async function createManualIntent(params: {
 
     return {
       intent: toPublicIntent(intent),
+      rawIntent: { ...intent },
       qrPayloads: intent.qrPayloads,
       eventName: event.name,
       userEmail: intent.userKey,
       eventId: event.id,
     };
+  });
+
+  // Sincronizar tickets a Firestore para el escáner (fuera de tx, fallos no críticos).
+  await syncTicketsToFirestore(marked.rawIntent).catch((err) => {
+    console.error("[createManualIntent] syncTicketsToFirestore failed:", err);
   });
 
   let emailDelivery: { attempted: number; sent: number; skipped: boolean; reason?: string } = { attempted: 0, sent: 0, skipped: true, reason: "No tickets." };
@@ -1118,6 +1171,7 @@ export async function markPaidByToken(token: string) {
       return {
         alreadyPaid: true,
         intent: toPublicIntent(intent),
+        rawIntent: { ...intent },
         qrPayloads: intent.qrPayloads ?? [],
         eventName: event?.name ?? intent.eventId,
         userEmail: intent.userKey,
@@ -1161,6 +1215,7 @@ export async function markPaidByToken(token: string) {
     return {
       alreadyPaid: false,
       intent: toPublicIntent(intent),
+      rawIntent: { ...intent },
       qrPayloads: intent.qrPayloads ?? [],
       eventName: event?.name ?? intent.eventId,
       userEmail: intent.userKey,
@@ -1170,6 +1225,13 @@ export async function markPaidByToken(token: string) {
 
   if (marked.alreadyPaid) {
     return { alreadyPaid: true as const, intent: marked.intent };
+  }
+
+  // Sincronizar tickets a Firestore para el escáner.
+  if (marked.rawIntent) {
+    await syncTicketsToFirestore(marked.rawIntent).catch((err) => {
+      console.error("[markPaidByToken] syncTicketsToFirestore failed:", err);
+    });
   }
 
   let emailDelivery: { attempted: number; sent: number; skipped: boolean; reason?: string } = {

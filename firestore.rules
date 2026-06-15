@@ -1,0 +1,46 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Colección de tickets (escáner). Lecturas/escrituras solo desde Admin SDK
+    // del servidor — el escáner llama a /api/validate-ticket que usa esas
+    // credenciales. Aquí solo permitimos lecturas públicas para que un usuario
+    // pueda comprobar el estado de su entrada si conoce el código exacto.
+    match /tickets/{ticketId} {
+      allow read: if true;
+      allow create: if false;
+      allow update: if false; // updates solo vía Admin SDK
+      allow delete: if false;
+    }
+
+    match /tickets_dev/{ticketId} {
+      allow read: if true;
+      allow create: if false;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Colecciones de Bizum (estado completo en un solo doc). Todas las
+    // operaciones van por Admin SDK desde la API — bloqueamos cliente.
+    match /bizum/{docId} {
+      allow read, write: if false;
+    }
+    match /bizum_dev/{docId} {
+      allow read, write: if false;
+    }
+
+    // Quizzes de Kahoot — todo cliente bloqueado, gestión por Admin SDK.
+    match /quizzes/{quizId} {
+      allow read, write: if false;
+    }
+
+    // Metadatos de fotos — gestionados por Admin SDK (API /api/photos).
+    // El cliente nunca lee/escribe directo; la galería va por la API.
+    match /photos/{photoId} {
+      allow read, write: if false;
+    }
+    match /photos_dev/{photoId} {
+      allow read, write: if false;
+    }
+  }
+}

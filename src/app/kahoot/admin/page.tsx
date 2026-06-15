@@ -160,6 +160,21 @@ export default function KahootAdminPage() {
     void loadActiveGame();
   }, [isAuthed, token]);
 
+  // Multi-admin: si otro host activó una partida y este admin no tiene ninguna
+  // cargada, sincronizamos automáticamente para que tome el control sin pasos.
+  useEffect(() => {
+    if (isAuthed && activeGameId && !gameId) {
+      setGameId(activeGameId);
+    }
+  }, [isAuthed, activeGameId, gameId]);
+
+  // Mantener visible la partida activa aunque otro admin la cambie mientras tanto.
+  useEffect(() => {
+    if (!isAuthed || !token) return;
+    const id = window.setInterval(() => void loadActiveGame(), 8000);
+    return () => window.clearInterval(id);
+  }, [isAuthed, token]);
+
   useEffect(() => {
     if (gameId) {
       window.localStorage.setItem(GAME_ID_KEY, gameId);
@@ -423,7 +438,11 @@ export default function KahootAdminPage() {
     setError("");
     setMessage("");
     try {
-      const id = await createGame(selectedQuiz.id, selectedQuiz.questions.length);
+      const id = await createGame(
+        selectedQuiz.id,
+        selectedQuiz.questions.length,
+        selectedQuiz.questions.map((q) => q.imageUrl),
+      );
       setGameId(id);
       setMessage(`Partida ${id} creada. Abre la pantalla y deja entrar jugadores.`);
     } catch (err) {
@@ -866,6 +885,15 @@ export default function KahootAdminPage() {
                     {activeGameId ? `Activa: ${activeGameId}` : "Sin partida activa"}
                   </span>
                 </div>
+                {activeGameId && activeGameId !== gameId ? (
+                  <button
+                    type="button"
+                    onClick={() => setGameId(activeGameId)}
+                    className="rounded-md border border-cyan-500/60 px-4 py-2 text-xs uppercase tracking-[0.2em] text-cyan-200 hover:bg-cyan-500/10"
+                  >
+                    Controlar partida activa
+                  </button>
+                ) : null}
                 {gameId && gameId !== activeGameId ? (
                   <button
                     type="button"
