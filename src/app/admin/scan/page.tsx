@@ -163,7 +163,8 @@ export default function ScannerPage() {
     setAuthLoading(true);
     setLoginError("");
     try {
-      const res = await fetch("/api/scanner-bootstrap", {
+      const demoParam = typeof window !== "undefined" && new URLSearchParams(window.location.search).get("demo") === "1";
+      const res = await fetch(`/api/scanner-bootstrap${demoParam ? "?demo=1" : ""}`, {
         headers: { "x-validator-token": value.trim() },
         cache: "no-store",
       });

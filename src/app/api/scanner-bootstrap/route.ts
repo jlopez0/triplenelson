@@ -14,7 +14,8 @@ export const dynamic = "force-dynamic";
 export async function GET(request: NextRequest) {
   try {
     requireValidator(request);
-    const codes = await listAllTicketCodes();
+    const demo = request.nextUrl.searchParams.get("demo") === "1";
+    const codes = await listAllTicketCodes(demo);
     return NextResponse.json({
       ticketCodes: codes,
       fetchedAt: new Date().toISOString(),

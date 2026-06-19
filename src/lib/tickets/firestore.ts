@@ -27,10 +27,10 @@ export async function getTicket(ticketCode: string): Promise<TicketDoc | null> {
   return snap.data() as TicketDoc;
 }
 
-export async function listAllTicketCodes(): Promise<string[]> {
+export async function listAllTicketCodes(demo = false): Promise<string[]> {
   const db = await getDb();
   const snap = await db
-    .collection(collectionName())
+    .collection(collectionName(demo))
     .select() // solo IDs, no payload — más rápido
     .get();
   return snap.docs.map((d) => d.id);

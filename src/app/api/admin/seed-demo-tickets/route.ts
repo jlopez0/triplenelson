@@ -21,9 +21,10 @@ export async function POST(request: NextRequest) {
   try {
     requireAdmin(request);
 
-    const body = (await request.json().catch(() => ({}))) as { count?: number; reset?: boolean };
+    const body = (await request.json().catch(() => ({}))) as { count?: number; reset?: boolean; used?: boolean };
     const count = Math.min(50, Math.max(1, Number(body.count ?? 20)));
     const reset = body.reset === true;
+    const used = body.used !== false; // default true, pasar used:false para sin validar
 
     const db = await getDb();
     const col = db.collection("tickets_demo");
@@ -54,8 +55,8 @@ export async function POST(request: NextRequest) {
         totalInIntent: 1,
         receiverId: "receiver-1",
         paidAt: now,
-        used: true,
-        usedAt: now,
+        used,
+        usedAt: used ? now : null,
         usedBy: null,
       };
       batch.set(col.doc(ticketCode), ticket);

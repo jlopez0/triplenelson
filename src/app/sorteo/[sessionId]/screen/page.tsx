@@ -7,6 +7,14 @@ import Link from "next/link";
 import { listenRaffleSession } from "@/lib/raffle/rtdb";
 import type { DrawResult, RaffleSession } from "@/lib/raffle/types";
 
+// RTDB serializa arrays como objetos {0:"A",1:"B"} cuando tienen pocos elementos
+function normalizeRtdbArray(val: unknown): string[] {
+  if (!val) return [];
+  if (Array.isArray(val)) return val.filter((v) => typeof v === "string");
+  if (typeof val === "object") return Object.values(val as Record<string, unknown>).filter((v) => typeof v === "string") as string[];
+  return [];
+}
+
 const FALLBACK_NAMES = [
   "ALEJANDRO", "BEATRIZ", "CARLOS", "DIANA", "ELENA",
   "FERNANDO", "GLORIA", "HÉCTOR", "IRENE", "JAVIER",
@@ -295,7 +303,7 @@ export default function RaffleScreenPage() {
               <SlotMachine
                 key={`slot-${drawIndex}`}
                 winnerName={winner}
-                participantNames={session?.participantNames ?? []}
+                participantNames={normalizeRtdbArray(session?.participantNames)}
                 onDone={() => setPhase("result")}
               />
             </motion.div>
