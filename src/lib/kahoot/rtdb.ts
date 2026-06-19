@@ -191,7 +191,7 @@ export async function submitAnswer(
     return {
       optionIndex,
       timeMs: Math.max(0, Math.round(timeMs)),
-      submittedAt: serverTimestamp() as unknown as number,
+      submittedAt: Date.now(),
     } satisfies GameAnswer;
   });
 

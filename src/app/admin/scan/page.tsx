@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import jsQR from "jsqr";
 import {
+  clearUsedLocally,
   enqueueScan,
   getBootstrapInfo,
   isCodeKnown,
@@ -175,6 +176,7 @@ export default function ScannerPage() {
         window.localStorage.setItem(VALIDATOR_NAME_KEY, name.trim());
       }
       saveBootstrap(data.ticketCodes);
+      if (demoParam) clearUsedLocally();
       setBootstrapInfo(getBootstrapInfo());
       setToken(value.trim());
       setValidatorName(name.trim() || "validator");
@@ -527,6 +529,20 @@ export default function ScannerPage() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          {isDemo && (
+            <button
+              type="button"
+              onClick={() => {
+                clearUsedLocally();
+                setHistory([]);
+                setLastResult(null);
+              }}
+              className="rounded-md border border-amber-600/50 bg-amber-500/10 px-3 py-1.5 text-[10px] uppercase tracking-[0.2em] text-amber-300 hover:bg-amber-500/20"
+              title="Limpiar historial de scans locales (solo demo)"
+            >
+              Reset
+            </button>
+          )}
           <button
             type="button"
             onClick={() => setPaused((p) => !p)}

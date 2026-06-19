@@ -101,6 +101,11 @@ export function removeFromQueue(ticketCode: string): void {
   window.localStorage.setItem(KEY_QUEUE, JSON.stringify(queue));
 }
 
+export function clearUsedLocally(): void {
+  if (typeof window === "undefined") return;
+  window.localStorage.removeItem(KEY_USED);
+}
+
 export function clearAll(): void {
   if (typeof window === "undefined") return;
   window.localStorage.removeItem(KEY_CODES);

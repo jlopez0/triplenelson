@@ -38,10 +38,14 @@ export async function POST(request: NextRequest) {
     const db = getAdminApp();
     const scoredRef = db.ref(`${ENV}/games/${gameId}/scoredQuestions/${completedQuestionIndex}`);
 
+    // Leer startedAt ANTES del lock — currentQuestion puede ser null después de finishGame.
+    const gameSnapEarly = await db.ref(`${ENV}/games/${gameId}/currentQuestion/startedAt`).get();
+    const startedAtEarly: number | null = gameSnapEarly.exists() ? (gameSnapEarly.val() as number) : null;
+
     // Idempotency lock: solo el primer llamante completa el scoring.
     const lockResult = await scoredRef.transaction((current) => {
       if (current !== null) return; // ya scoring — abortar
-      return { scoredAt: Date.now() };
+      return { scoredAt: Date.now(), startedAt: startedAtEarly };
     });
 
     if (!lockResult.committed) {
@@ -86,7 +90,9 @@ export async function POST(request: NextRequest) {
       ? (playersSnap.val() as Record<string, GamePlayer>)
       : {};
 
-    const startedAt = game.currentQuestion?.startedAt ?? Date.now();
+    // Usar startedAt capturado antes del lock — es más fiable que leerlo del game
+    // porque finishGame puede haber puesto currentQuestion: null antes de que lleguemos aquí.
+    const startedAt = startedAtEarly ?? game.currentQuestion?.startedAt ?? Date.now();
 
     // Calcular tiempo efectivo de respuesta para cada jugador que acertó.
     type Correct = { playerId: string; effectiveMs: number };
