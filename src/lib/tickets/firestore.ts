@@ -1,7 +1,8 @@
 import { getDb } from "@/lib/bizum/firebase";
 import type { TicketDoc, ValidationResult } from "./types";
 
-function collectionName(): string {
+function collectionName(demo = false): string {
+  if (demo) return "tickets_demo";
   return process.env.BIZUM_ENV === "dev" ? "tickets_dev" : "tickets";
 }
 
@@ -42,9 +43,10 @@ export async function listAllTicketCodes(): Promise<string[]> {
 export async function validateAndMarkUsed(
   ticketCode: string,
   validator: string,
+  demo = false,
 ): Promise<ValidationResult> {
   const db = await getDb();
-  const ref = db.collection(collectionName()).doc(ticketCode);
+  const ref = db.collection(collectionName(demo)).doc(ticketCode);
 
   return db.runTransaction(async (tx) => {
     const snap = await tx.get(ref);

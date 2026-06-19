@@ -129,7 +129,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState("");
 
   const [editingIntent, setEditingIntent] = useState<AdminIntent | null>(null);
-  const [editFields, setEditFields] = useState<{ userKey: string; buyerName: string; ticketType: string; quantity: number; amountCents: string; receiverPhone: string; status: AdminIntent["status"] }>({ userKey: "", buyerName: "", ticketType: "", quantity: 1, amountCents: "", receiverPhone: "", status: "CREATED" });
+  const [editFields, setEditFields] = useState<{ userKey: string; buyerName: string; ticketType: string; quantity: number; amountCents: string; receiverId: string; status: AdminIntent["status"] }>({ userKey: "", buyerName: "", ticketType: "", quantity: 1, amountCents: "", receiverId: "", status: "CREATED" });
   const [editCustomType, setEditCustomType] = useState("");
   const [savingEdit, setSavingEdit] = useState(false);
 
@@ -295,6 +295,24 @@ export default function AdminPage() {
     }
   }
 
+  async function resendTickets(intentId: string) {
+    setError(""); setMessage("");
+    if (!window.confirm("¿Reenviar las entradas por email a este comprador?")) return;
+    try {
+      const res = await fetch("/api/admin/resend-tickets", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...currentAuthHeader() },
+        body: JSON.stringify({ intentId }),
+      });
+      const payload = await res.json();
+      if (!res.ok) throw new Error(payload?.message ?? "No se pudo reenviar.");
+      setMessage(`✓ Entradas reenviadas por email (${payload?.sent ?? "?"} PDF).`);
+      await loadData();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo reenviar.");
+    }
+  }
+
   async function deleteIntentById(intentId: string, isPaid: boolean) {
     setError(""); setMessage("");
     if (!window.confirm(isPaid
@@ -327,7 +345,7 @@ export default function AdminPage() {
       ticketType: isPreset ? current : "__custom__",
       quantity: item.quantity,
       amountCents: (item.amountCents / 100).toFixed(2),
-      receiverPhone: item.receiverPhone,
+      receiverId: item.receiverId,
       status: item.status,
     });
     setEditCustomType(isPreset ? "" : current);
@@ -351,7 +369,7 @@ export default function AdminPage() {
           ticketType: ticketType || undefined,
           quantity: editFields.quantity,
           amountCents,
-          receiverPhone: editFields.receiverPhone.trim(),
+          receiverId: editFields.receiverId || undefined,
           status: editFields.status,
         }),
       });
@@ -498,33 +516,20 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-techno">
       <header className="border-b border-zinc-800 bg-black/60 backdrop-blur-sm sticky top-0 z-50">
-        <div className="container-pro py-4 flex items-center justify-between">
-          <h1 className="font-display text-lg md:text-2xl leading-tight">
+        <div className="container-pro py-3 flex flex-wrap items-center gap-2">
+          <h1 className="font-display text-lg md:text-xl leading-tight mr-auto">
             Panel Admin
             {loading && <span className="ml-2 text-xs text-zinc-500 font-sans">Cargando...</span>}
           </h1>
-          <div className="flex items-center gap-2">
-            <Link href="/kahoot/admin" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
-              Kahoot
-            </Link>
-            <Link href="/ruleta/admin" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
-              Ruleta
-            </Link>
-            <Link href="/admin/scan" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
-              Escáner
-            </Link>
-            <Link href="/admin/fotos" className="btn-secondary text-[11px] md:text-xs px-3 py-2">
-              📸 Fotos
-            </Link>
-            <button type="button" onClick={() => setShowManualModal(true)} className="btn-primary text-[11px] md:text-xs px-3 py-2">
-              + Pago
-            </button>
-            <button type="button" onClick={loadData} disabled={loading} className="btn-secondary text-[11px] md:text-xs px-3 py-2 disabled:opacity-40">
-              ↺
-            </button>
-            <button type="button" onClick={handleLogout} className="text-[11px] md:text-xs text-zinc-500 hover:text-white transition-colors uppercase tracking-wider px-1">
-              Salir
-            </button>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Link href="/kahoot/admin" className="btn-secondary text-[10px] px-2.5 py-1.5">Kahoot</Link>
+            <Link href="/ruleta/admin" className="btn-secondary text-[10px] px-2.5 py-1.5">Ruleta</Link>
+            <Link href="/sorteo/admin" className="btn-secondary text-[10px] px-2.5 py-1.5">Sorteo</Link>
+            <Link href="/admin/scan" className="btn-secondary text-[10px] px-2.5 py-1.5">Escáner</Link>
+            <Link href="/admin/fotos" className="btn-secondary text-[10px] px-2.5 py-1.5">Fotos</Link>
+            <button type="button" onClick={() => setShowManualModal(true)} className="btn-primary text-[10px] px-2.5 py-1.5">+ Pago</button>
+            <button type="button" onClick={loadData} disabled={loading} className="btn-secondary text-[10px] px-2.5 py-1.5 disabled:opacity-40">↺</button>
+            <button type="button" onClick={handleLogout} className="text-[10px] text-zinc-500 hover:text-white transition-colors uppercase tracking-wider px-1">Salir</button>
           </div>
         </div>
       </header>
@@ -726,12 +731,15 @@ export default function AdminPage() {
                             : <span className="text-zinc-600">—</span>}
                         </td>
                         <td className="py-3 pr-3">
-                          <div className="flex gap-2">
+                          <div className="flex flex-wrap gap-2">
                             {(item.status === "USER_CONFIRMED" || item.status === "CREATED") && (
                               <>
                                 <button type="button" onClick={() => markPaid(item.id)} disabled={loading} className="rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-2 py-1 text-xs text-emerald-200 hover:bg-emerald-500/20 disabled:opacity-40">✓ Pagado</button>
                                 <button type="button" onClick={() => rejectIntent(item.id)} disabled={loading} className="rounded-lg border border-rose-500/40 bg-rose-500/10 px-2 py-1 text-xs text-rose-200 hover:bg-rose-500/20 disabled:opacity-40">✗ Rechazar</button>
                               </>
+                            )}
+                            {item.status === "PAID" && (
+                              <button type="button" onClick={() => resendTickets(item.id)} disabled={loading} className="rounded-lg border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-xs text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">✉ Reenviar</button>
                             )}
                             <button type="button" onClick={() => openEdit(item)} disabled={loading} className="rounded-lg border border-blue-500/40 bg-blue-500/10 px-2 py-1 text-xs text-blue-200 hover:bg-blue-500/20 disabled:opacity-40">✎ Editar</button>
                             <button type="button" onClick={() => deleteIntentById(item.id, item.status === "PAID")} disabled={loading} className="rounded-lg border border-zinc-600/40 bg-zinc-700/20 px-2 py-1 text-xs text-zinc-400 hover:bg-zinc-700/40 disabled:opacity-40">Borrar</button>
@@ -803,8 +811,12 @@ export default function AdminPage() {
                 </div>
               </div>
               <div>
-                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Teléfono receptor</label>
-                <input type="text" value={editFields.receiverPhone} onChange={(e) => setEditFields((f) => ({ ...f, receiverPhone: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400" />
+                <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Receptor</label>
+                <select value={editFields.receiverId} onChange={(e) => setEditFields((f) => ({ ...f, receiverId: e.target.value }))} className="w-full rounded-xl border border-zinc-700 bg-black/40 px-3 py-2 text-sm outline-none focus:border-zinc-400">
+                  {receivers.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label} · {r.phone}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="text-xs uppercase tracking-widest text-zinc-500 mb-1 block">Estado</label>

@@ -949,7 +949,7 @@ export async function updateIntent(params: {
     ticketType?: string;
     quantity?: number;
     amountCents?: number;
-    receiverPhone?: string;
+    receiverId?: string;
     status?: PaymentIntentStatus;
   };
 }) {
@@ -969,7 +969,15 @@ export async function updateIntent(params: {
     if (p.ticketType !== undefined) intent.ticketType = p.ticketType.trim() || undefined;
     if (p.quantity !== undefined) intent.quantity = Math.max(1, Math.min(MAX_TICKETS_PER_PURCHASE, Math.round(p.quantity)));
     if (p.amountCents !== undefined) intent.amountCents = Math.max(0, Math.round(p.amountCents));
-    if (p.receiverPhone !== undefined) intent.receiverPhone = p.receiverPhone.replace(/\s+/g, "").trim();
+    if (p.receiverId !== undefined) {
+      const receiver = db.receivers.find((r) => r.id === p.receiverId);
+      if (!receiver) {
+        throw new BizumServiceError({ code: "RECEIVER_NOT_FOUND", statusCode: 400, message: `Receptor '${p.receiverId}' no encontrado.` });
+      }
+      intent.receiverId = receiver.id;
+      intent.receiverPhone = receiver.phone;
+      intent.receiverLabel = receiver.label;
+    }
     if (p.status !== undefined) intent.status = p.status;
 
     intent.updatedAt = nowIso();
@@ -1283,4 +1291,54 @@ export async function markPaidByToken(token: string) {
   }
 
   return { alreadyPaid: false as const, intent: marked.intent, emailDelivery };
+}
+
+export async function resendTicketsEmail(params: { intentId: string }) {
+  const db = await readDbSnapshot();
+  const intent = db.payment_intents.find((i) => i.id === params.intentId.trim());
+
+  if (!intent) {
+    throw new BizumServiceError({ code: "INTENT_NOT_FOUND", statusCode: 404, message: "Intent not found." });
+  }
+  if (intent.status !== "PAID") {
+    throw new BizumServiceError({ code: "NOT_PAID", statusCode: 400, message: "Only PAID intents can have tickets re-sent." });
+  }
+  if (!intent.ticketCodes || intent.ticketCodes.length === 0) {
+    throw new BizumServiceError({ code: "NO_TICKETS", statusCode: 400, message: "Intent has no ticket codes generated." });
+  }
+
+  const eventName = process.env.BIZUM_EVENT_NAME ?? "TRIPLE NELSON";
+  const qrPayloads =
+    intent.qrPayloads && intent.qrPayloads.length === intent.ticketCodes.length
+      ? intent.qrPayloads
+      : intent.ticketCodes.map((code) => JSON.stringify({ ticketCode: code }));
+
+  const result = await sendTicketsByEmail({
+    to: intent.userKey,
+    eventName,
+    paymentRef: intent.paymentRef,
+    amountCents: intent.amountCents,
+    currency: "EUR",
+    ticketCodes: intent.ticketCodes,
+    qrPayloads,
+  });
+
+  await withDbTransaction((db) => {
+    const idx = db.payment_intents.findIndex((i) => i.id === intent.id);
+    if (idx !== -1) {
+      db.payment_intents[idx]!.ticketsEmailedAt = new Date().toISOString();
+      db.audit_logs.push(
+        buildAuditLog({
+          action: "TICKETS_EMAIL_SENT",
+          actorType: "ADMIN",
+          actorKey: "resend-manual",
+          intentId: intent.id,
+          eventId: intent.eventId,
+          metadata: { sent: result.sent, attempted: result.attempted, manual: true },
+        }),
+      );
+    }
+  });
+
+  return result;
 }

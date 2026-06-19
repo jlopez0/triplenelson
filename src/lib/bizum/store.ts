@@ -90,7 +90,13 @@ function normalizeDb(candidate: Partial<BizumDb> | null | undefined): BizumDb {
   }
 
   return {
-    events: Array.isArray(candidate.events) && candidate.events.length > 0 ? candidate.events : seed.events,
+    events:
+      Array.isArray(candidate.events) && candidate.events.length > 0
+        ? candidate.events.map((e) => ({
+            ...e,
+            fixedPriceCents: Math.max(100, Math.round(DEFAULT_FIXED_PRICE_EUR * 100)),
+          }))
+        : seed.events,
     receivers:
       Array.isArray(candidate.receivers) && candidate.receivers.length > 0
         ? seed.receivers.map((seedReceiver, index) => {
