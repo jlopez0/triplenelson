@@ -1054,28 +1054,26 @@ export async function expireIntentsJob(params: { actorKey: string }) {
 
 export async function getIntentPublic(params: { intentId: string; userKey?: string }) {
   const userKey = params.userKey ? normalizeUserKey(params.userKey) : null;
-  return withDbTransaction((db) => {
-    expireStaleIntentsInDb(db, new Date());
+  const db = await readDbSnapshot();
 
-    const intent = db.payment_intents.find((item) => item.id === params.intentId.trim());
-    if (!intent) {
-      throw new BizumServiceError({
-        code: "INTENT_NOT_FOUND",
-        statusCode: 404,
-        message: "Intent not found.",
-      });
-    }
+  const intent = db.payment_intents.find((item) => item.id === params.intentId.trim());
+  if (!intent) {
+    throw new BizumServiceError({
+      code: "INTENT_NOT_FOUND",
+      statusCode: 404,
+      message: "Intent not found.",
+    });
+  }
 
-    if (userKey && intent.userKey !== userKey) {
-      throw new BizumServiceError({
-        code: "INTENT_NOT_FOUND",
-        statusCode: 404,
-        message: "Intent not found.",
-      });
-    }
+  if (userKey && intent.userKey !== userKey) {
+    throw new BizumServiceError({
+      code: "INTENT_NOT_FOUND",
+      statusCode: 404,
+      message: "Intent not found.",
+    });
+  }
 
-    return toPublicIntent(intent);
-  });
+  return toPublicIntent(intent);
 }
 
 export async function listAdminIntents(params: {

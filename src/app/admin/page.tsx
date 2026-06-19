@@ -125,6 +125,7 @@ export default function AdminPage() {
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<"pending" | "all">("pending");
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -443,6 +444,16 @@ export default function AdminPage() {
   }
 
   // Derived state
+  const searchNorm = search.trim().toLowerCase();
+  const filteredIntents = useMemo(() => {
+    if (!searchNorm) return allIntents;
+    return allIntents.filter((i) =>
+      i.paymentRef.toLowerCase().includes(searchNorm) ||
+      (i.buyerName ?? "").toLowerCase().includes(searchNorm) ||
+      i.userKey.toLowerCase().includes(searchNorm),
+    );
+  }, [allIntents, searchNorm]);
+
   const pending = useMemo(() => allIntents.filter((i) => i.status === "USER_CONFIRMED" || i.status === "CREATED"), [allIntents]);
   const paid = useMemo(() => allIntents.filter((i) => i.status === "PAID"), [allIntents]);
   const created = useMemo(() => allIntents.filter((i) => i.status === "CREATED"), [allIntents]);
@@ -600,6 +611,23 @@ export default function AdminPage() {
           </div>
         </section>
 
+        {/* Buscador */}
+        <div className="relative">
+          <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-zinc-500">⌕</span>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setActiveTab("all"); }}
+            placeholder="Buscar por nombre, email o código TN..."
+            className="w-full rounded-xl border border-zinc-700 bg-black/40 py-2.5 pl-8 pr-4 text-sm outline-none focus:border-zinc-400 placeholder:text-zinc-600"
+          />
+          {search && (
+            <span className="absolute inset-y-0 right-3 flex items-center text-xs text-zinc-500">
+              {filteredIntents.length} resultado{filteredIntents.length !== 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+
         {/* Tabs */}
         <div className="flex gap-1 border-b border-zinc-800">
           <button
@@ -686,8 +714,10 @@ export default function AdminPage() {
         {/* Tab: Todos */}
         {activeTab === "all" && (
           <section className="card">
-            {allIntents.length === 0 ? (
-              <p className="text-sm text-zinc-500 py-4 text-center">No hay datos para los filtros actuales.</p>
+            {filteredIntents.length === 0 ? (
+              <p className="text-sm text-zinc-500 py-4 text-center">
+                {search ? `Sin resultados para "${search}".` : "No hay datos para los filtros actuales."}
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -708,7 +738,7 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {allIntents.map((item) => (
+                    {filteredIntents.map((item) => (
                       <tr key={item.id} className="border-b border-zinc-900 hover:bg-zinc-900/30">
                         <td className="py-3 pr-3"><StatusBadge status={item.status} ticketsEmailedAt={item.ticketsEmailedAt} /></td>
                         <td className="py-3 pr-3 font-mono font-bold text-zinc-200">{item.paymentRef}</td>

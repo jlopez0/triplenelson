@@ -143,14 +143,14 @@ export default function KahootScreenPage() {
                 <h2 className="mt-2 font-display text-8xl font-bold tracking-tight">
                   {playerCount}
                 </h2>
-                <div className="mt-8 grid max-h-[58vh] grid-cols-2 gap-3 overflow-hidden xl:grid-cols-3">
+                <div className="mt-8 grid max-h-[58vh] grid-cols-3 gap-2 overflow-y-auto overflow-x-hidden xl:grid-cols-4">
                   {Object.entries(players).map(([playerId, player], index) => (
                     <motion.div
                       key={playerId}
                       initial={{ opacity: 0, scale: 0.94 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: Math.min(index * 0.02, 0.35) }}
-                      className="truncate rounded-lg border border-zinc-800 bg-black/50 px-5 py-4 text-2xl font-semibold"
+                      className="truncate rounded-lg border border-zinc-800 bg-black/50 px-3 py-2.5 text-base font-semibold"
                     >
                       {player.name}
                     </motion.div>

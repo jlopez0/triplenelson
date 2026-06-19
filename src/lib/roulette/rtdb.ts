@@ -221,7 +221,7 @@ export function getLeaderboard(
       (a, b) =>
         b.credits - a.credits ||
         Number(a.eliminated) - Number(b.eliminated) ||
-        a.name.localeCompare(b.name),
+        (a.name ?? "").localeCompare(b.name ?? ""),
     )
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }

@@ -54,8 +54,8 @@ export async function POST(request: NextRequest) {
         totalInIntent: 1,
         receiverId: "receiver-1",
         paidAt: now,
-        used: false,
-        usedAt: null,
+        used: true,
+        usedAt: now,
         usedBy: null,
       };
       batch.set(col.doc(ticketCode), ticket);

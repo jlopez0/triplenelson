@@ -256,7 +256,7 @@ export function getLeaderboardFromPlayers(
       lastGain: player.lastGain ?? 0,
       rank: 0,
     }))
-    .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+    .sort((a, b) => b.score - a.score || (a.name ?? "").localeCompare(b.name ?? ""))
     .map((entry, index) => ({ ...entry, rank: index + 1 }));
 }
 
