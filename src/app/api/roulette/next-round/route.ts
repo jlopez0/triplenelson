@@ -26,48 +26,55 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getAdminApp();
-    const sessionRef = db.ref(basePath(sessionId));
+    const base = basePath(sessionId);
 
-    // Lock idempotente sobre status: solo el primer llamante avanza la ronda.
-    const tx = await sessionRef.transaction((current: RouletteSession | null) => {
-      if (!current) return current;
-      if (current.status !== "result") return; // abortar: no es estado válido para avanzar
-      return {
-        ...current,
-        status: "betting_open",
-        currentRound: {
-          index: (current.currentRound?.index ?? 0) + 1,
-          startedAt: Date.now(),
-          timeLimit: 30,
-          result: null,
-          color: null,
-          allBetsIn: false,
-        },
-      };
+    // Lock idempotente: solo el primer llamante avanza desde "result".
+    const lockRef = db.ref(`${base}/status`);
+    const lockTx = await lockRef.transaction((current: string | null) => {
+      if (current !== "result") return; // abortar
+      return "advancing"; // estado temporal para bloquear otros llamantes
     });
-
-    if (!tx.committed) {
-      // Otro llamante ya avanzó (o no estaba en "result"). Idempotente: OK skipped.
+    if (!lockTx.committed) {
       return NextResponse.json({ ok: true, skipped: true });
     }
 
-    // Reset de apuestas por jugador — separado porque depende de qué jugadores existan ahora.
-    const playersSnap = await db.ref(`${basePath(sessionId)}/players`).get();
+    // Leer players ANTES de escribir el nuevo status, para incluir hasBet=false
+    // en el mismo update atómico — evita la ventana donde status=betting_open
+    // pero hasBet sigue en true de la ronda anterior (lo que dispara checkAllBetsIn prematuramente).
+    const [sessionSnap, playersSnap] = await Promise.all([
+      db.ref(base).get(),
+      db.ref(`${base}/players`).get(),
+    ]);
+
+    if (!sessionSnap.exists()) {
+      return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    }
+    const session = sessionSnap.val() as RouletteSession;
     const players = playersSnap.exists()
       ? (playersSnap.val() as Record<string, RoulettePlayer>)
       : {};
 
-    const updates: Record<string, unknown> = {};
-    for (const playerId of Object.keys(players)) {
-      const base = `${basePath(sessionId)}/players/${playerId}`;
-      updates[`${base}/hasBet`] = false;
-      updates[`${base}/bets`] = [];
-    }
-    if (Object.keys(updates).length) {
-      await db.ref().update(updates);
-    }
+    const nextIndex = (session.currentRound?.index ?? 0) + 1;
 
-    return NextResponse.json({ ok: true });
+    // Un solo update atómico: nuevo status + nueva ronda + reset de apuestas.
+    const updates: Record<string, unknown> = {
+      [`${base}/status`]: "betting_open",
+      [`${base}/currentRound`]: {
+        index: nextIndex,
+        startedAt: Date.now(),
+        timeLimit: 30,
+        result: null,
+        color: null,
+        allBetsIn: false,
+      },
+    };
+    for (const playerId of Object.keys(players)) {
+      updates[`${base}/players/${playerId}/hasBet`] = false;
+      updates[`${base}/players/${playerId}/bets`] = [];
+    }
+    await db.ref().update(updates);
+
+    return NextResponse.json({ ok: true, round: nextIndex });
   } catch (error) {
     return toKahootErrorResponse(error);
   }

@@ -93,13 +93,13 @@ export default function RouletteAdminPage() {
     return listenPlayers(sessionId, setPlayers);
   }, [sessionId]);
 
-  // Multi-admin: si otro host activó una sesión y este admin no tiene ninguna
-  // cargada, sincronizamos automáticamente para que tome el control sin pasos.
+  // Multi-admin: al autenticarse, carga siempre la sesión activa si hay una,
+  // independientemente de lo que haya en localStorage.
   useEffect(() => {
-    if (isAuthed && activeSessionId && !sessionId) {
+    if (isAuthed && activeSessionId) {
       setSessionId(activeSessionId);
     }
-  }, [isAuthed, activeSessionId, sessionId]);
+  }, [isAuthed, activeSessionId]);
 
   // Refrescar la sesión activa periódicamente por si otro admin la cambia.
   useEffect(() => {

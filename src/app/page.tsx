@@ -105,7 +105,7 @@ export default async function HomePage() {
               ) : null}
               {activeSessionId ? (
                 <Link href={`/ruleta/${activeSessionId}`} className="btn-secondary text-[11px] md:text-sm py-2.5 md:py-4 px-3 md:px-6 text-center flex-1">
-                  🎰 Ruleta
+                  Ruleta
                 </Link>
               ) : null}
               <Link href="/lineup" className="btn-secondary text-[11px] md:text-sm py-2.5 md:py-4 px-3 md:px-6 text-center flex-1">
