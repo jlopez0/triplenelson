@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     const body = (await request.json().catch(() => ({}))) as {
       qrPayload?: string;
       validator?: string;
+      demo?: boolean;
     };
 
     const ticketCode = extractTicketCode(body.qrPayload ?? "");
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const validatorLabel = (body.validator ?? "").toString().slice(0, 40) || actor;
-    const result = await validateAndMarkUsed(ticketCode, validatorLabel);
+    const result = await validateAndMarkUsed(ticketCode, validatorLabel, body.demo === true);
 
     return NextResponse.json(result);
   } catch (error) {

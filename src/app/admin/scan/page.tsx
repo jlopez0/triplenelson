@@ -91,6 +91,7 @@ function playFeedback(status: ScanStatus): void {
 }
 
 export default function ScannerPage() {
+  const [isDemo, setIsDemo] = useState(false);
   const [token, setToken] = useState("");
   const [tokenInput, setTokenInput] = useState("");
   const [validatorName, setValidatorName] = useState("");
@@ -117,9 +118,11 @@ export default function ScannerPage() {
   const recentCodesRef = useRef<Map<string, number>>(new Map());
   const pausedRef = useRef(false);
 
-  // ── Estado inicial: token y nombre desde localStorage ──
+  // ── Estado inicial: token, nombre y modo demo desde URL/localStorage ──
   useEffect(() => {
     if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    setIsDemo(params.get("demo") === "1");
     const storedToken = window.localStorage.getItem(TOKEN_KEY) ?? "";
     const storedName = window.localStorage.getItem(VALIDATOR_NAME_KEY) ?? "";
     setBootstrapInfo(getBootstrapInfo());
@@ -240,7 +243,24 @@ export default function ScannerPage() {
   const handleQrPayload = useCallback(
     async (payload: string) => {
       const ticketCode = extractTicketCode(payload);
-      if (!ticketCode) return;
+
+      // QR detectado pero sin formato de entrada Triple Nelson → feedback de error inmediato.
+      if (!ticketCode) {
+        const now = Date.now();
+        const lastSeen = recentCodesRef.current.get("__invalid__");
+        if (lastSeen && now - lastSeen < COOLDOWN_MS) return;
+        recentCodesRef.current.set("__invalid__", now);
+        const entry: ScanEntry = {
+          id: `invalid-${now}`,
+          status: "NOT_FOUND",
+          ticketCode: payload.trim().slice(0, 40),
+          scannedAt: new Date().toISOString(),
+          message: "QR no reconocido. No es una entrada Triple Nelson.",
+        };
+        pushEntry(entry);
+        playFeedback("NOT_FOUND");
+        return;
+      }
 
       // Cooldown: ignorar el mismo código durante COOLDOWN_MS.
       const now = Date.now();
@@ -265,7 +285,7 @@ export default function ScannerPage() {
               "Content-Type": "application/json",
               "x-validator-token": token,
             },
-            body: JSON.stringify({ qrPayload: ticketCode, validator: validatorName }),
+            body: JSON.stringify({ qrPayload: ticketCode, validator: validatorName, demo: isDemo }),
           });
           const data = (await res.json()) as ValidationResult;
           const entry: ScanEntry = {
@@ -329,7 +349,7 @@ export default function ScannerPage() {
       pushEntry(entry);
       playFeedback("OK");
     },
-    [token, validatorName],
+    [token, validatorName, isDemo],
   );
 
   function pushEntry(entry: ScanEntry) {
@@ -493,6 +513,7 @@ export default function ScannerPage() {
         <div className="flex flex-col">
           <span className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">
             Triple Nelson · Scanner
+            {isDemo && <span className="ml-2 rounded bg-amber-500/20 px-1.5 py-0.5 text-[9px] font-bold text-amber-300 border border-amber-500/40">DEMO</span>}
           </span>
           <span className="text-xs text-zinc-300">
             {validatorName} ·{" "}

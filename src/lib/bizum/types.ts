@@ -33,6 +33,7 @@ export interface PaymentIntent {
   quantity: number;
   receiverId: string;
   receiverPhone: string;
+  receiverLabel?: string;
   amountCents: number;
   currency: "EUR";
   status: PaymentIntentStatus;

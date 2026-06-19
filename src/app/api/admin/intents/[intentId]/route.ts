@@ -15,7 +15,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
       ticketType?: string;
       quantity?: number;
       amountCents?: number;
-      receiverPhone?: string;
+      receiverId?: string;
       status?: PaymentIntentStatus;
     };
     const intent = await updateIntent({ intentId, adminKey, ip: getClientIp(request), patch: body });
