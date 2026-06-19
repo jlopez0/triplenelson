@@ -7,8 +7,7 @@ import Link from "next/link";
 import { listenRaffleSession } from "@/lib/raffle/rtdb";
 import type { DrawResult, RaffleSession } from "@/lib/raffle/types";
 
-// Nombres de relleno para la animación slot — se mezclan durante el giro
-const FILLER_NAMES = [
+const FALLBACK_NAMES = [
   "ALEJANDRO", "BEATRIZ", "CARLOS", "DIANA", "ELENA",
   "FERNANDO", "GLORIA", "HÉCTOR", "IRENE", "JAVIER",
   "LAURA", "MIGUEL", "NATALIA", "OSCAR", "PATRICIA",
@@ -18,8 +17,9 @@ const FILLER_NAMES = [
 const ITEM_HEIGHT = 96; // px — altura de cada nombre en el slot
 const VISIBLE_ITEMS = 5; // cuántos nombres se ven a la vez
 
-function buildSlotList(winnerName: string, seed: number): string[] {
-  const shuffled = [...FILLER_NAMES].sort(() => Math.sin(seed + Math.random()) - 0.5);
+function buildSlotList(winnerName: string, seed: number, names: string[]): string[] {
+  const pool = names.length >= 5 ? names : FALLBACK_NAMES;
+  const shuffled = [...pool].sort(() => Math.sin(seed + Math.random()) - 0.5);
   const filler: string[] = [];
   while (filler.length < 80) {
     filler.push(...shuffled);
@@ -27,10 +27,10 @@ function buildSlotList(winnerName: string, seed: number): string[] {
   return [...filler.slice(0, 80), winnerName];
 }
 
-function SlotMachine({ winnerName, onDone }: { winnerName: string; onDone: () => void }) {
+function SlotMachine({ winnerName, participantNames, onDone }: { winnerName: string; participantNames: string[]; onDone: () => void }) {
   const controls = useAnimation();
   const seed = useRef(Date.now()).current;
-  const items = useMemo(() => buildSlotList(winnerName, seed), [winnerName, seed]);
+  const items = useMemo(() => buildSlotList(winnerName, seed, participantNames), [winnerName, seed, participantNames]);
   const winnerIndex = items.length - 1;
 
   useEffect(() => {
@@ -169,6 +169,7 @@ export default function RaffleScreenPage() {
               <SlotMachine
                 key={drawIndex}
                 winnerName={winner}
+                participantNames={session.participantNames ?? []}
                 onDone={() => setShowResult(true)}
               />
             </motion.div>

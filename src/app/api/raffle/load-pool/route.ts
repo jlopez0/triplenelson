@@ -63,12 +63,15 @@ export async function POST(request: NextRequest) {
 
     poolStore.set(sessionId, papeletas);
 
+    const participantNames = Array.from(new Set(papeletas.map((p) => p.name.toUpperCase())));
+
     const rtdb = getAdminApp();
     await rtdb.ref(`${ENV}/raffle/${sessionId}`).set({
       status: "idle",
       poolSize: papeletas.length,
       uniqueParticipants: countUniqueParticipants(papeletas),
       jcoins,
+      participantNames,
       currentDraw: { index: 0, winnerName: null, winnerIntentId: null },
       history: [],
     });

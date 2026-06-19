@@ -17,8 +17,8 @@ import type { TicketDoc, ValidationResult } from "@/lib/tickets/types";
 
 const TOKEN_KEY = "tn_validator_token";
 const VALIDATOR_NAME_KEY = "tn_validator_name";
-const COOLDOWN_MS = 4000; // mismo código no se re-envía durante 4s
-const SCAN_INTERVAL_MS = 200; // 5 fps de decodificación
+const COOLDOWN_MS = 1500; // mismo código no se re-envía durante 1.5s
+const SCAN_INTERVAL_MS = 100; // 10 fps de decodificación
 
 type ScanStatus = "OK" | "DUPLICATE" | "NOT_FOUND" | "QUEUED";
 

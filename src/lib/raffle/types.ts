@@ -22,6 +22,7 @@ export interface RaffleSession {
   poolSize: number;
   uniqueParticipants: number;
   jcoins: number;
+  participantNames?: string[];
   currentDraw: RaffleCurrentDraw;
   history?: DrawResult[];
 }

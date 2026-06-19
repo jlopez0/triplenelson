@@ -50,7 +50,24 @@ export default function PhotosAdminPage() {
   const [tasks, setTasks] = useState<UploadTask[]>([]);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function openLightbox(index: number) { setLightboxIndex(index); }
+  function closeLightbox() { setLightboxIndex(null); }
+  function prevPhoto() { setLightboxIndex((i) => (i !== null ? (i - 1 + photos.length) % photos.length : null)); }
+  function nextPhoto() { setLightboxIndex((i) => (i !== null ? (i + 1) % photos.length : null)); }
+
+  useEffect(() => {
+    if (lightboxIndex === null) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "ArrowLeft") prevPhoto();
+      else if (e.key === "ArrowRight") nextPhoto();
+      else if (e.key === "Escape") closeLightbox();
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxIndex]);
 
   useEffect(() => {
     const stored = window.localStorage.getItem(TOKEN_KEY) ?? "";
@@ -396,10 +413,11 @@ export default function PhotosAdminPage() {
 
           {photos.length ? (
             <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-              {photos.map((photo) => (
+              {photos.map((photo, index) => (
                 <div
                   key={photo.id}
-                  className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950"
+                  className="group relative overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 cursor-pointer"
+                  onClick={() => openLightbox(index)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -412,7 +430,7 @@ export default function PhotosAdminPage() {
                     <span className="truncate text-xs text-zinc-300">{photo.originalFileName}</span>
                     <button
                       type="button"
-                      onClick={() => void deletePhoto(photo.id)}
+                      onClick={(e) => { e.stopPropagation(); void deletePhoto(photo.id); }}
                       className="shrink-0 rounded border border-rose-500/50 px-2 py-1 text-[10px] uppercase tracking-[0.15em] text-rose-200 hover:bg-rose-500/20"
                     >
                       Borrar
@@ -428,6 +446,83 @@ export default function PhotosAdminPage() {
           )}
         </section>
       </div>
+
+      {/* Lightbox */}
+      {lightboxIndex !== null && photos[lightboxIndex] && (() => {
+        const photo = photos[lightboxIndex];
+        return (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95"
+            onClick={closeLightbox}
+          >
+            {/* Imagen */}
+            <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photo.url}
+                alt={photo.originalFileName}
+                className="max-h-[85vh] max-w-[90vw] rounded-lg object-contain shadow-2xl"
+              />
+
+              {/* Barra inferior */}
+              <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-3 rounded-b-lg bg-black/70 px-4 py-3 backdrop-blur-sm">
+                <span className="truncate text-xs text-zinc-300">{photo.originalFileName}</span>
+                <div className="flex shrink-0 gap-2">
+                  <a
+                    href={photo.url}
+                    download={photo.originalFileName}
+                    onClick={(e) => e.stopPropagation()}
+                    className="rounded border border-cyan-500/50 px-3 py-1.5 text-[10px] uppercase tracking-widest text-cyan-300 hover:bg-cyan-500/20"
+                  >
+                    Descargar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); void deletePhoto(photo.id).then(closeLightbox); }}
+                    className="rounded border border-rose-500/50 px-3 py-1.5 text-[10px] uppercase tracking-widest text-rose-300 hover:bg-rose-500/20"
+                  >
+                    Borrar
+                  </button>
+                </div>
+              </div>
+
+              {/* Contador */}
+              <div className="absolute left-1/2 top-3 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs text-zinc-400">
+                {lightboxIndex + 1} / {photos.length}
+              </div>
+            </div>
+
+            {/* Flechas */}
+            {photos.length > 1 && (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); prevPhoto(); }}
+                  className="absolute left-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white hover:bg-black/90"
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); nextPhoto(); }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full bg-black/60 p-3 text-white hover:bg-black/90"
+                >
+                  ›
+                </button>
+              </>
+            )}
+
+            {/* Cerrar */}
+            <button
+              type="button"
+              onClick={closeLightbox}
+              className="absolute right-4 top-4 rounded-full bg-black/60 p-2 text-sm text-zinc-400 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        );
+      })()}
     </main>
   );
 }
