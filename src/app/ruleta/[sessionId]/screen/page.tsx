@@ -324,12 +324,12 @@ export default function RouletteScreenPage() {
                 <p className="mt-1 text-sm text-zinc-400">
                   Saldo inicial: <span className="font-mono text-cyan-200">{session.config.initialCredits}</span> créditos
                 </p>
-                <div className="mt-6 grid max-h-[55vh] grid-cols-2 gap-3 overflow-hidden xl:grid-cols-3">
+                <div className="mt-6 grid max-h-[55vh] grid-cols-3 gap-1.5 overflow-y-auto overflow-x-hidden pr-1 xl:grid-cols-4">
                   {Object.entries(players).map(([id, p], i) => (
                     <motion.div key={id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: Math.min(i * 0.02, 0.3) }}
-                      className="truncate rounded-lg border border-zinc-800 bg-black/50 px-4 py-3 text-xl font-semibold">
-                      {p.name}
+                      className="break-words rounded-md border border-zinc-800 bg-black/50 px-2 py-1.5 text-xs font-semibold leading-tight">
+                      {p.name ?? ""}
                     </motion.div>
                   ))}
                 </div>

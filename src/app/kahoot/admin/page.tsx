@@ -129,9 +129,15 @@ export default function KahootAdminPage() {
     () => quizzes.find((quiz) => quiz.id === selectedQuizId) ?? null,
     [quizzes, selectedQuizId],
   );
+  // activeQuiz siempre sigue al juego en curso, independientemente de lo que tenga
+  // seleccionado el admin en su panel. Evita que un segundo admin use su quiz local.
+  const activeQuiz = useMemo(
+    () => (game?.quizId ? (quizzes.find((q) => q.id === game.quizId) ?? null) : null),
+    [quizzes, game?.quizId],
+  );
   const leaderboard = useMemo(() => ranking(players), [players]);
-  const currentQuestion = game && selectedQuiz
-    ? selectedQuiz.questions[game.currentQuestionIndex]
+  const currentQuestion = game && activeQuiz
+    ? activeQuiz.questions[game.currentQuestionIndex]
     : null;
   const answerTotals = useMemo(() => {
     const totals = [0, 0, 0, 0];
@@ -454,7 +460,7 @@ export default function KahootAdminPage() {
   }
 
   async function goNextQuestion() {
-    if (!selectedQuiz || !gameId || !game) return;
+    if (!activeQuiz || !gameId || !game) return;
     setBusyAction("next");
     setError("");
     try {
@@ -465,12 +471,12 @@ export default function KahootAdminPage() {
         await scoreOnServer(gameId, completedIndex, token);
       }
 
-      if (nextIndex >= selectedQuiz.questions.length) {
+      if (nextIndex >= activeQuiz.questions.length) {
         await finishGame(gameId);
         return;
       }
 
-      await advanceQuestion(gameId, nextIndex, selectedQuiz.questions[nextIndex]);
+      await advanceQuestion(gameId, nextIndex, activeQuiz.questions[nextIndex]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo avanzar.");
     } finally {

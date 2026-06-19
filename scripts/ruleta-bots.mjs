@@ -16,16 +16,8 @@
  *   RULETA_BET_SPREAD   — variación aleatoria adicional en ms (default: 12000)
  */
 
-import { initializeApp } from "firebase/app";
-import {
-  getDatabase,
-  ref,
-  set,
-  get,
-  update,
-  onValue,
-  remove,
-} from "firebase/database";
+import { initializeApp, cert, getApps } from "firebase-admin/app";
+import { getDatabase } from "firebase-admin/database";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
 import { fileURLToPath } from "url";
@@ -76,24 +68,29 @@ if (!sessionId) {
   process.exit(1);
 }
 
-// ─── Firebase ─────────────────────────────────────────────────────────────────
-const firebaseConfig = {
-  apiKey: env("NEXT_PUBLIC_FIREBASE_API_KEY"),
-  authDomain: env("NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN"),
-  databaseURL: env("NEXT_PUBLIC_FIREBASE_DATABASE_URL"),
-  projectId: env("NEXT_PUBLIC_FIREBASE_PROJECT_ID"),
-  storageBucket: env("NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET"),
-  messagingSenderId: env("NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID"),
-  appId: env("NEXT_PUBLIC_FIREBASE_APP_ID"),
-};
+// ─── Firebase Admin SDK (bypasea reglas de seguridad) ─────────────────────────
+const databaseURL =
+  env("FIREBASE_DATABASE_URL") || env("NEXT_PUBLIC_FIREBASE_DATABASE_URL");
+const projectId = env("FIREBASE_PROJECT_ID");
+const clientEmail = env("FIREBASE_CLIENT_EMAIL");
+const rawKey = env("FIREBASE_PRIVATE_KEY");
+const privateKey = rawKey.replace(/\\n/g, "\n");
 
-if (!firebaseConfig.databaseURL) {
-  console.error("[bots] NEXT_PUBLIC_FIREBASE_DATABASE_URL no encontrada en .env.local");
+if (!databaseURL || !projectId || !clientEmail || !privateKey) {
+  console.error("[bots] Faltan variables de Admin SDK:");
+  console.error("  FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY, FIREBASE_DATABASE_URL");
   process.exit(1);
 }
 
-const app = initializeApp(firebaseConfig);
+const existing = getApps().find((a) => a.name === "ruleta-bots");
+const app = existing ?? initializeApp(
+  { credential: cert({ projectId, clientEmail, privateKey }), databaseURL },
+  "ruleta-bots",
+);
 const db = getDatabase(app);
+
+// Helper: convierte path a referencia admin
+function dbRef(path) { return db.ref(path); }
 
 function rp(path) {
   return `${FIREBASE_ENV}/roulette/${path}`;
@@ -289,8 +286,7 @@ class RouletteBot {
   }
 
   async join() {
-    const playerRef = ref(db, rp(`${sessionId}/players/${this.playerId}`));
-    await set(playerRef, {
+    await dbRef(rp(`${sessionId}/players/${this.playerId}`)).set({
       name: this.name,
       credits: this.credits,
       hasBet: false,
@@ -311,7 +307,7 @@ class RouletteBot {
     await sleep(delay);
 
     // Leer créditos actuales del RTDB (pueden haber cambiado)
-    const playerSnap = await get(ref(db, rp(`${sessionId}/players/${this.playerId}`)));
+    const playerSnap = await dbRef(rp(`${sessionId}/players/${this.playerId}`)).get();
     if (!playerSnap.exists()) return;
     const player = playerSnap.val();
     if (player.eliminated || player.hasBet) return;
@@ -336,14 +332,14 @@ class RouletteBot {
     }
 
     // Verificar que la sesión sigue abierta
-    const sessionSnap = await get(ref(db, rp(sessionId)));
+    const sessionSnap = await dbRef(rp(sessionId)).get();
     if (!sessionSnap.exists()) return;
     const session = sessionSnap.val();
     if (session.status !== "betting_open") return;
     if (session.currentRound?.index !== roundIndex) return;
 
     try {
-      await update(ref(db, rp(`${sessionId}/players/${this.playerId}`)), {
+      await dbRef(rp(`${sessionId}/players/${this.playerId}`)).update({
         hasBet: true,
         bets,
       });
@@ -355,18 +351,19 @@ class RouletteBot {
   }
 
   startListening() {
-    const sessionRef = ref(db, rp(sessionId));
-    this.unsubscribe = onValue(sessionRef, async (snap) => {
+    const sessionRef = dbRef(rp(sessionId));
+    const handler = async (snap) => {
       if (!snap.exists()) return;
       const session = snap.val();
-
       if (session.status === "betting_open" && session.currentRound) {
         const roundIndex = session.currentRound.index;
         if (!this.bettedRounds.has(roundIndex)) {
           await this.placeBet(roundIndex, session.config?.initialCredits ?? 1000);
         }
       }
-    });
+    };
+    sessionRef.on("value", handler);
+    this.unsubscribe = () => sessionRef.off("value", handler);
   }
 
   async cleanup() {
@@ -376,7 +373,7 @@ class RouletteBot {
     }
     if (this.joined) {
       try {
-        await remove(ref(db, rp(`${sessionId}/players/${this.playerId}`)));
+        await dbRef(rp(`${sessionId}/players/${this.playerId}`)).remove();
       } catch {
         // ignorar
       }
@@ -398,9 +395,7 @@ async function main() {
 `);
 
   // Verificar que la sesión existe
-  const sessionSnap = await new Promise((resolve) => {
-    const unsub = onValue(ref(db, rp(sessionId)), (s) => { unsub(); resolve(s); });
-  });
+  const sessionSnap = await dbRef(rp(sessionId)).get();
 
   if (!sessionSnap.exists()) {
     console.error(`[bots] ERROR: No existe la sesión ${sessionId} en ${FIREBASE_ENV}/roulette/${sessionId}`);
@@ -444,13 +439,15 @@ async function main() {
 
   // Escuchar fin de partida
   let finished = false;
-  const statusRef = ref(db, rp(`${sessionId}/status`));
-  const unsubStatus = onValue(statusRef, (s) => {
+  const statusRef = dbRef(rp(`${sessionId}/status`));
+  const statusHandler = (s) => {
     if (s.val() === "finished") {
       finished = true;
       console.log("\n[bots] Partida finalizada. Limpiando bots...");
     }
-  });
+  };
+  statusRef.on("value", statusHandler);
+  const unsubStatus = () => statusRef.off("value", statusHandler);
 
   async function shutdown(signal) {
     console.log(`\n[bots] ${signal} recibido. Limpiando ${BOT_COUNT} bots...`);
