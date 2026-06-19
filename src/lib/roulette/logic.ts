@@ -23,6 +23,7 @@ export const BET_LIMITS: Record<
   { min: number; max: number; payout: number }
 > = {
   number: { min: 10, max: 100, payout: 35 },
+  corner: { min: 20, max: 200, payout: 9 },  // 4 números, paga 8:1 neto (x9)
   red: { min: 50, max: 500, payout: 2 },
   black: { min: 50, max: 500, payout: 2 },
   even: { min: 50, max: 500, payout: 2 },
@@ -36,6 +37,7 @@ export const BET_LIMITS: Record<
 
 export const BET_TYPE_LABELS: Record<BetType, string> = {
   number: "Número",
+  corner: "Cuatro",
   red: "Rojo",
   black: "Negro",
   even: "Par",
@@ -46,6 +48,17 @@ export const BET_TYPE_LABELS: Record<BetType, string> = {
   dozen2: "2ª docena (13-24)",
   dozen3: "3ª docena (25-36)",
 };
+
+// Esquinas válidas: cada array de 4 números que forman un cuadrado en la mesa.
+// La mesa tiene 3 filas (fila 1 = col*3+1, fila 2 = col*3+2, fila 3 = col*3+3).
+// Un corner cubre [n, n+1, n+3, n+4] en layout columnar.
+export const CORNER_GROUPS: number[][] = [];
+for (let col = 0; col < 11; col++) {
+  for (let row = 1; row <= 2; row++) {
+    const n = col * 3 + row;
+    CORNER_GROUPS.push([n, n + 1, n + 3, n + 4]);
+  }
+}
 
 export function getNumberColor(n: number): RouletteColor {
   if (n === 0) return "green";
@@ -59,6 +72,12 @@ export function doesBetWin(bet: Bet, result: number): boolean {
   switch (bet.type) {
     case "number":
       return bet.value !== null && bet.value === result;
+    case "corner": {
+      // value encodes the corner as the smallest number of the group
+      if (bet.value === null) return false;
+      const group = CORNER_GROUPS.find((g) => g[0] === bet.value);
+      return group ? group.includes(result) : false;
+    }
     case "red":
       return getNumberColor(result) === "red";
     case "black":
@@ -103,13 +122,12 @@ export function validateBet(
   const { min, max } = BET_LIMITS[bet.type];
 
   if (bet.type === "number") {
-    if (
-      bet.value === null ||
-      !Number.isInteger(bet.value) ||
-      bet.value < 0 ||
-      bet.value > 36
-    ) {
+    if (bet.value === null || !Number.isInteger(bet.value) || bet.value < 0 || bet.value > 36) {
       return { ok: false, reason: "Número fuera de rango (0-36)." };
+    }
+  } else if (bet.type === "corner") {
+    if (bet.value === null || !CORNER_GROUPS.find((g) => g[0] === bet.value)) {
+      return { ok: false, reason: "Esquina inválida." };
     }
   } else if (bet.value !== null) {
     return { ok: false, reason: "Esta apuesta no admite valor." };

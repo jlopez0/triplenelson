@@ -9,7 +9,7 @@
     "lint": "next lint",
     "test:email": "node scripts/test-resend-email.mjs",
     "kahoot:bots": "node scripts/kahoot-bots.mjs",
-    "ruleta:bots": "node scripts/ruleta-bots.mjs"
+    "ruleta:bots": "node scripts/ruleta-bots.cjs"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1068.0",

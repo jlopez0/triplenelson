@@ -9,6 +9,7 @@ export type RouletteColor = "red" | "black" | "green";
 
 export type BetType =
   | "number"
+  | "corner"
   | "red"
   | "black"
   | "even"

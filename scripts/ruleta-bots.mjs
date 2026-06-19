@@ -16,11 +16,19 @@
  *   RULETA_BET_SPREAD   — variación aleatoria adicional en ms (default: 12000)
  */
 
-import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getDatabase } from "firebase-admin/database";
 import { readFileSync } from "fs";
 import { resolve, dirname } from "path";
-import { fileURLToPath } from "url";
+import { fileURLToPath, URL } from "url";
+import { createRequire } from "module";
+
+const require = createRequire(import.meta.url);
+const admin = require("firebase-admin");
+const { initializeApp, cert, getApps } = admin.app ? admin : require("firebase-admin/app");
+
+// Helper: getDatabase desde firebase-admin
+function getDatabase(app) {
+  return admin.database(app);
+}
 
 // ─── Cargar .env.local ────────────────────────────────────────────────────────
 const __dirname = dirname(fileURLToPath(import.meta.url));

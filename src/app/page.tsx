@@ -10,7 +10,7 @@ const UfoAnimation = dynamic(() => import('@/components/UfoAnimation').then(m =>
 
 export const revalidate = 0;
 
-const TARGET_TIMESTAMP = new Date('2026-06-20T23:59:59').getTime();
+const TARGET_TIMESTAMP = new Date('2026-06-20T17:00:00').getTime();
 const ENV = process.env.NEXT_PUBLIC_FIREBASE_ENV ?? 'dev';
 
 function isPhotosVisible(): boolean {
@@ -74,17 +74,23 @@ export default async function HomePage() {
           </div>
 
           {/* Countdown */}
-          <div className="lg:col-span-5 lg:order-2 order-2">
-            <div className="rounded-2xl md:rounded-3xl border border-zinc-800/80 bg-black/40 backdrop-blur-sm p-3 md:p-6 lg:p-8">
-              <div className="text-center mb-2 md:mb-5">
-                <span className="text-[9px] md:text-xs uppercase tracking-[0.3em] text-zinc-500 font-medium">
-                  Cuenta Regresiva
-                </span>
+          {(() => {
+            const isLive = initialTimeLeft.days === 0 && initialTimeLeft.hours === 0 && initialTimeLeft.minutes === 0 && initialTimeLeft.seconds === 0;
+            return (
+              <div className="lg:col-span-5 lg:order-2 order-2">
+                <div className={`rounded-2xl md:rounded-3xl ${isLive ? "" : "border border-zinc-800/80 bg-black/40 backdrop-blur-sm p-3 md:p-6 lg:p-8"}`}>
+                  {!isLive && (
+                    <div className="text-center mb-2 md:mb-5">
+                      <span className="text-[9px] md:text-xs uppercase tracking-[0.3em] text-zinc-500 font-medium">
+                        Cuenta Regresiva
+                      </span>
+                    </div>
+                  )}
+                  <HomeCountdown initialTimeLeft={initialTimeLeft} targetTimestamp={TARGET_TIMESTAMP} />
+                </div>
               </div>
-
-              <HomeCountdown initialTimeLeft={initialTimeLeft} targetTimestamp={TARGET_TIMESTAMP} />
-            </div>
-          </div>
+            );
+          })()}
 
           {/* Description & Buttons */}
           <div className="lg:col-span-7 lg:order-3 order-3 space-y-2.5 md:space-y-5 lg:space-y-6">

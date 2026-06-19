@@ -177,11 +177,11 @@ export default function RoulettePlayerPage() {
   const playerBets = Array.isArray(player.bets) ? player.bets : [];
 
   return (
-    <main className="min-h-screen bg-techno px-3 py-3">
-      <div className="mx-auto flex min-h-[calc(100vh-24px)] max-w-lg flex-col">
+    <main className="h-dvh bg-techno flex flex-col overflow-hidden">
+      <div className="flex flex-col h-full max-w-lg mx-auto w-full px-3 py-2">
 
-        {/* Saldo sticky */}
-        <header className="sticky top-0 z-20 flex items-center justify-between gap-3 border-b border-zinc-800 bg-black/90 px-2 py-3 backdrop-blur">
+        {/* Saldo */}
+        <header className="shrink-0 flex items-center justify-between gap-3 border-b border-zinc-800 pb-2 mb-2">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-[0.26em] text-zinc-500">Triple Nelson · Ruleta</p>
             <h1 className="truncate font-display text-xl font-semibold">{player.name}</h1>
@@ -192,7 +192,7 @@ export default function RoulettePlayerPage() {
           </div>
         </header>
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode="wait" initial={false}>
 
           {/* ── LOBBY ── */}
           {session.status === "lobby" ? (
@@ -211,46 +211,46 @@ export default function RoulettePlayerPage() {
 
           {/* ── BETTING OPEN ── */}
           {session.status === "betting_open" ? (
-            <motion.section key={`bet-${round.index}`} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
-              className="flex flex-1 flex-col py-3">
+            <motion.section key={`bet-${round.index}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              className="flex flex-1 flex-col min-h-0">
 
               {/* Countdown */}
-              <div className="h-2 overflow-hidden rounded-full bg-zinc-800">
-                <div className={`h-full rounded-full transition-[width] ${remainingMs < 10000 ? "bg-rose-400" : "bg-cyan-300"}`} style={{ width: `${progress * 100}%` }} />
-              </div>
-              <div className="mt-1 flex justify-between text-xs uppercase tracking-[0.18em] text-zinc-500">
-                <span>Ronda {round.index}</span>
-                <span className={remainingMs < 10000 ? "text-rose-300 font-bold" : ""}>{Math.ceil(remainingMs / 1000)}s</span>
+              <div className="shrink-0 mb-1">
+                <div className="h-1.5 overflow-hidden rounded-full bg-zinc-800">
+                  <div className={`h-full rounded-full transition-[width] ${remainingMs < 10000 ? "bg-rose-400" : "bg-cyan-300"}`} style={{ width: `${progress * 100}%` }} />
+                </div>
+                <div className="mt-0.5 flex justify-between text-[10px] uppercase tracking-[0.18em] text-zinc-500">
+                  <span>Ronda {round.index}</span>
+                  <span className={remainingMs < 10000 ? "text-rose-300 font-bold" : ""}>{Math.ceil(remainingMs / 1000)}s</span>
+                </div>
               </div>
 
               {player.eliminated ? (
-                <div className="mt-6 rounded-xl border border-rose-500/40 bg-rose-500/10 p-5 text-center">
-                  <p className="text-xl font-bold text-rose-200">Sin créditos</p>
-                  <p className="mt-1 text-sm text-rose-300/70">Puedes seguir viendo la partida.</p>
+                <div className="flex flex-1 items-center justify-center">
+                  <div className="rounded-xl border border-rose-500/40 bg-rose-500/10 p-5 text-center">
+                    <p className="text-xl font-bold text-rose-200">Sin créditos</p>
+                    <p className="mt-1 text-sm text-rose-300/70">Puedes seguir viendo la partida.</p>
+                  </div>
                 </div>
               ) : player.hasBet ? (
-                <div className="mt-6 flex flex-1 flex-col items-center justify-center">
+                <div className="flex flex-1 flex-col items-center justify-center">
                   <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/10 p-6 text-center w-full">
                     <p className="text-xl font-bold text-emerald-200">¡Apuestas confirmadas!</p>
                     <div className="mt-3 space-y-1">
                       {playerBets.map((b, i) => (
                         <p key={i} className="text-sm text-zinc-300">
-                          <span className="text-white font-semibold">{BET_TYPE_LABELS[b.type]}{b.type === "number" && b.value !== null ? ` ${b.value}` : ""}</span>
-                          {" · "}
-                          <span className="font-mono text-cyan-200">{b.amount}</span> créditos
-                          {" · "}
-                          <span className="text-zinc-500">x{BET_LIMITS[b.type].payout}</span>
+                          <span className="text-white font-semibold">{BET_TYPE_LABELS[b.type]}{(b.type === "number" || b.type === "corner") && b.value !== null ? ` ${b.value}` : ""}</span>
+                          {" · "}<span className="font-mono text-cyan-200">{b.amount}</span>
+                          {" · "}<span className="text-zinc-500">x{BET_LIMITS[b.type].payout}</span>
                         </p>
                       ))}
                     </div>
-                    <p className="mt-3 font-mono text-lg text-cyan-200">
-                      Total: {playerBets.reduce((s, b) => s + b.amount, 0)} créditos
-                    </p>
-                    <p className="mt-4 text-sm text-zinc-400">Esperando a que gire la ruleta...</p>
+                    <p className="mt-3 font-mono text-lg text-cyan-200">Total: {playerBets.reduce((s, b) => s + b.amount, 0)}</p>
+                    <p className="mt-3 text-sm text-zinc-400 animate-pulse">Esperando a que gire la ruleta...</p>
                   </div>
                 </div>
               ) : (
-                <div className="mt-2 flex-1">
+                <div className="flex-1 min-h-0 flex flex-col">
                   <CasinoBettingUI
                     credits={credits}
                     pendingBets={pendingBets}
@@ -261,7 +261,7 @@ export default function RoulettePlayerPage() {
                     confirming={confirming}
                   />
                   {error ? (
-                    <p className="mt-2 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>
+                    <p className="shrink-0 mt-1 rounded-md border border-rose-500/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-200">{error}</p>
                   ) : null}
                 </div>
               )}
